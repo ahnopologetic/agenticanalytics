@@ -1,0 +1,24 @@
+[project]
+name = "server"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "a2a-sdk>=0.2.4",
+    "drtail-prompt",
+    "gitpython>=3.1.44",
+    "google-adk>=1.0.0",
+    "google-cloud-aiplatform>=1.94.0",
+    "google-cloud-storage>=2.19.0",
+    "google-genai>=1.16.1",
+    "structlog>=25.3.0",
+    "tree-sitter>=0.24.0",
+]
+
+[project.scripts]
+code-scan-rag-ingest = "agents.code_scan.ingestion.rag_corpus:main"
+code-scan-rag-search = "agents.code_scan.semantic_search_engine:main"
+
+[tool.uv.sources]
+drtail-prompt = { git = "https://github.com/drtail/drtail-prompt.git", rev = "v0.3.0" }
