@@ -36,7 +36,7 @@ const Login = () => {
         Sign in with Google
       </button>
       <button
-        className="w-64 py-3 rounded text-white font-semibold shadow hover:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-400"
+        className="w-64 py-3 rounded text-white font-semibold shadow hover:bg-gray-500 hover:duration-300 hover:shadow-lg cursor-pointer focus:outline-none focus:ring-2 focus:ring-gray-400"
         onClick={handleLoginWithGitHub}
         tabIndex={0}
         aria-label="Sign in with GitHub"
