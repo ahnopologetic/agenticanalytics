@@ -1,0 +1,6 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+1. Always leave your worklog and technical decision making in [technical-logs.md](mdc:ui/web/docs/technical-logs.md)
