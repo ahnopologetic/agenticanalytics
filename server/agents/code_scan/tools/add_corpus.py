@@ -1,8 +1,12 @@
 import argparse
+from pathlib import Path
 import structlog
 from typing import Optional
 
-from code_scan.ingestion.rag_corpus import ingest_repository_to_rag_corpus
+from code_scan.ingestion.rag_corpus import (
+    ingest_local_repo_to_rag_corpus,
+    ingest_repository_to_rag_corpus,
+)
 from code_scan.ingestion.config import (
     RAGIngestConfig,
 )  # For default project/location
@@ -54,8 +58,6 @@ def add_corpus_from_github(
             rag_corpus_display_name=corpus_display_name,
             project_id=effective_project_id,
             location=effective_location,
-            # Other parameters like gcs_bucket_name, embedding_model, chunk_size/overlap
-            # will use defaults from the RAGIngestConfig within ingest_repository_to_rag_corpus
         )
 
         if (
@@ -117,6 +119,63 @@ def add_corpus_from_github(
         return {
             "status": "error",
             "message": f"An unexpected error occurred: {str(e)}",
+        }
+
+
+def add_corpus_from_local_repo(
+    local_repo_path: str,
+    corpus_display_name: Optional[str] = None,
+    project_id: Optional[str] = None,
+    location: Optional[str] = None,
+) -> dict:
+    """
+    CLI tool to add a RAG corpus from a local repository using the ingestion pipeline.
+    """
+    logger.info(
+        "Adding corpus from local repository via tool",
+        local_repo_path=local_repo_path,
+    )
+    if isinstance(local_repo_path, str):
+        local_repo_path = Path(local_repo_path)
+
+    corpus_object, import_response = ingest_local_repo_to_rag_corpus(
+        local_repo_path=local_repo_path,
+        rag_corpus_display_name=corpus_display_name,
+        project_id=project_id,
+        location=location,
+    )
+
+    if (
+        corpus_object
+        and import_response
+        and hasattr(corpus_object, "name")
+        and import_response.imported_rag_files_count > 0
+    ):
+        logger.info(
+            "RAG corpus created and files imported successfully.",
+            corpus_name=corpus_object.name,
+            corpus_display_name=corpus_object.display_name,
+            imported_count=import_response.imported_rag_files_count,
+            failed_count=import_response.failed_rag_files_count,
+        )
+
+        return {
+            "status": "success",
+            "message": "RAG corpus created and files imported successfully.",
+            "corpus_name": corpus_object.name,
+            "corpus_display_name": corpus_object.display_name,
+        }
+    else:
+        logger.error(
+            "Failed to create RAG corpus or import files.",
+            corpus_object=corpus_object,
+            import_response=import_response,
+        )
+        return {
+            "status": "error",
+            "message": "Failed to create RAG corpus or import files. Check logs for details.",
+            "corpus_details": str(corpus_object) if corpus_object else "N/A",
+            "import_details": str(import_response) if import_response else "N/A",
         }
 
 

@@ -18,6 +18,7 @@ messages:
       ## Available Tools
       - list_corpora(): List all available indexed corpora.
       - add_corpus_from_github(github_url: str): Add a GitHub repo as a RAG corpus.
+      - add_corpus_from_local_repo(local_repo_path: str): Add a local repo as a RAG corpus.
       - rag_query(query: str): Search the indexed corpus with a semantic or keyword-based query.
       - list_files(corpus_name: str, page_size: int = 100, page_token: str = None): List all files in the given corpus.
 
@@ -27,6 +28,18 @@ messages:
       - properties: Dictionary of properties or parameters sent with the event
       - context: Human-readable description of the context or user action that triggers the tracking
       - location: File name and relative path where the tracking is implemented
+
+      ```json
+      {
+        "event_name": "Signup Completed",
+        "properties": {
+          "method": "email",
+          "plan": "free"
+        },
+        "context": "User clicks the signup button on the registration form",
+        "location": "src/components/RegisterForm.jsx:112"
+      }
+      ```
 
       ## Step-by-Step Instructions
       Step 1: Check if the corpus is available
@@ -52,22 +65,27 @@ messages:
       Tracking call can vary in the way it's written and customized, so 
       Use one query per search. Combine keywords for more precision as needed.
 
-      Step 3: Define a pattern for tracking
-      In order to find all the tracking calls, we need to define a pattern for tracking.
-      Use define_pattern(matching_contents: list[str], language: str) to define a pattern for tracking.
-      - matching_contents: list of matching contents
-      - language: language of the codebase
+      Step 3: Define Tracking Patterns
+      To find all tracking calls, we will use rag_query with carefully crafted search patterns.
+      
+      Search for tracking-related code snippets by using multiple semantic search queries:
+      - Use rag_query() with precise keywords related to tracking methods
+      - Combine multiple search terms to increase precision
+      - Examples of search queries:
+        * "track(" "event" "analytics"
+        * "logEvent" "properties"
+        * "sendAnalytics" "eventName"
 
-      Make sure language is a singular language. e.g. "python" not "python, javascript"
-      Output of define_pattern is a pattern and language
+      These semantic search queries will help identify potential tracking code across different files and languages.
 
-      Step 4: Execute and find all the tracking calls based on the pattern
-      TBD: For now, we will not going to do this.
+      Step 4: Analyze and Extract Tracking Calls
+      For each search result:
+      - Examine the code context around the tracking call
+      - Identify the event name, properties, and surrounding context
+      - Capture the file location and line number for precise tracking
 
-      For the reference, it will be like this:
-
-      From the pattern and language, we can execute and find all the tracking calls.
-      We can extract the event_name, properties, context, and location from the tracking calls.
+      The goal is to use semantic search capabilities to comprehensively scan the codebase for tracking implementations, 
+      without relying on a predefined pattern tool.
 
       Step 5: Output in structured format
       Return the result as a JSON array, with each item in the following structure:
@@ -82,9 +100,18 @@ messages:
           },
           "context": "User clicks the signup button on the registration form",
           "location": "src/components/RegisterForm.jsx:112"
-        }
-        ...
+        },
+        {
+          "event_name": "Signup Completed",
+          "properties": {
+            "method": "email",
+            "plan": "free"
+          },
+          "context": "User clicks the signup button on the registration form",
+          "location": "src/components/RegisterForm.jsx:112"
+        },
       ]
+      ```
 
       ## Additional Notes
       - If the event name is stored in a variable or imported, trace its value or definition.

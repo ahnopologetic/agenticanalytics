@@ -6,6 +6,8 @@ from typing import Any, List, Optional, Tuple
 
 import git
 import vertexai
+from code_scan.ingestion.config import config
+from code_scan.logger import structlog
 from google.cloud import aiplatform_v1beta1, storage
 from google.cloud.aiplatform_v1.types.vertex_rag_data_service import (
     ImportRagFilesResponse,
@@ -21,14 +23,35 @@ from vertexai.preview.rag.utils.resources import (
     RagResource,
 )
 
-from code_scan.ingestion.config import config
-from code_scan.logger import structlog
-
 logger = structlog.get_logger()
+
+IGNORE_PATTERN = [
+    "node_modules/",
+    "dist/",
+    "build/",
+    "target/",
+    "venv/",
+    "assets/",
+    "public/",
+    "static/",
+    "images/",
+    ".git/",
+    ".DS_Store/",
+    ".idea/",
+    ".vscode/",
+    ".pytest_cache/",
+    ".ruff_cache/",
+    ".venv/",
+    ".env",
+    ".env.local",
+    ".env.development",
+    ".env.production",
+    ".env.test",
+    ".env.development.local",
+]
 
 
 def clone_github_repo(github_url: str) -> Path:
-    # TODO: validate github_url
     repo_path = Path(config.local_repo_path) / github_url.split("/")[-1]
     if repo_path.exists():
         logger.info("Repo already cloned", path=str(repo_path))
@@ -94,12 +117,6 @@ def chunk_file_by_tree_sitter(file_path: Path, language: str = "python"):
     Returns a list of (start_line, end_line, chunk_text).
     Supported languages: python, typescript, java, kotlin, go
     """
-    import tree_sitter_go as go_tree_sitter
-    import tree_sitter_java as java_tree_sitter
-    import tree_sitter_javascript as javascript_tree_sitter
-    import tree_sitter_kotlin as kotlin_tree_sitter
-    import tree_sitter_python as python_tree_sitter
-    import tree_sitter_typescript as typescript_tree_sitter
 
     if not TREE_SITTER_AVAILABLE:
         logger.warn(
@@ -119,16 +136,31 @@ def chunk_file_by_tree_sitter(file_path: Path, language: str = "python"):
     try:
         # Load the appropriate language parser
         if language == "python":
+            import tree_sitter_python as python_tree_sitter
+
             language_parser = python_tree_sitter.language()
         elif language == "typescript":
-            language_parser = typescript_tree_sitter.language()
+            import tree_sitter_typescript as typescript_tree_sitter
+
+            if file_path.suffix.lower() == ".tsx":
+                language_parser = typescript_tree_sitter.language_tsx()
+            else:
+                language_parser = typescript_tree_sitter.language_typescript()
         elif language == "java":
+            import tree_sitter_java as java_tree_sitter
+
             language_parser = java_tree_sitter.language()
         elif language == "kotlin":
+            import tree_sitter_kotlin as kotlin_tree_sitter
+
             language_parser = kotlin_tree_sitter.language()
         elif language == "go":
+            import tree_sitter_go as go_tree_sitter
+
             language_parser = go_tree_sitter.language()
         elif language == "javascript":
+            import tree_sitter_javascript as javascript_tree_sitter
+
             language_parser = javascript_tree_sitter.language()
         else:
             raise ValueError(
@@ -157,6 +189,14 @@ def chunk_file_by_tree_sitter(file_path: Path, language: str = "python"):
                 "function_declaration",
                 "class_declaration",
                 "method_declaration",
+                "interface_declaration",
+                "type_alias_declaration",
+                "enum_declaration",
+                "variable_declaration",
+                "const_declaration",
+                "let_declaration",
+                "import_declaration",
+                "export_declaration",
             ):
                 start_line = child.start_point[0] + 1  # 1-indexed
                 end_line = child.end_point[0] + 1
@@ -164,7 +204,7 @@ def chunk_file_by_tree_sitter(file_path: Path, language: str = "python"):
                 chunks.append((start_line, end_line, chunk_text))
 
         if not chunks:
-            logger.info(
+            logger.debug(
                 "No suitable tree-sitter chunks found; falling back to line-based chunking.",
                 file=str(file_path),
             )
@@ -220,15 +260,30 @@ def upload_repo_to_gcs(
         config.max_file_size_mb * 1024 * 1024 if config.max_file_size_mb > 0 else 0
     )
     uploaded, skipped = 0, 0
+    files_to_process = [
+        file_path
+        for file_path in Path(local_repo_path).rglob("*")
+        if is_supported_file(file_path)
+        and not any(pattern in str(file_path) for pattern in IGNORE_PATTERN)
+        and not (
+            file_path.name.startswith(".")
+            or any(part.startswith(".") for part in file_path.parts)
+        )
+    ]
+    total_files = len(files_to_process)
+    processed_files = 0
 
-    for file_path in Path(local_repo_path).rglob("*"):
-        if file_path.is_dir() or ".git" in file_path.parts:
-            continue
-        if not is_supported_file(file_path):
-            continue
+    for file_path in files_to_process:
+        processed_files += 1
+        logger.info(
+            f"Processing file {processed_files}/{total_files}",
+            file=str(file_path),
+            progress=f"{processed_files / total_files * 100:.2f}%",
+        )
+
         if max_bytes > 0 and file_path.stat().st_size > max_bytes:
             skipped += 1
-            logger.info(
+            logger.debug(
                 "Skipping large file",
                 file=str(file_path),
                 size=file_path.stat().st_size,
@@ -300,7 +355,7 @@ def upload_repo_to_gcs(
                 if upload_file(blob, temp_chunk_path):
                     uploaded += 1
                     if uploaded % 50 == 0:
-                        logger.info("Uploaded chunks so far", uploaded=uploaded)
+                        logger.debug("Uploaded chunks so far", uploaded=uploaded)
                 else:
                     skipped += 1
             except Exception as e:
@@ -469,6 +524,98 @@ def ingest_repository_to_rag_corpus(
         logger.info(
             "RAG ingestion pipeline completed for repository.",
             github_url=github_url,
+            corpus_name=created_corpus.name,
+            imported_count=import_response.imported_rag_files_count
+            if import_response
+            else "N/A",
+            failed_count=import_response.failed_rag_files_count
+            if import_response
+            else "N/A",
+        )
+        return created_corpus, import_response
+
+    except Exception as e:
+        logger.error("Error during RAG ingestion pipeline", error=str(e), exc_info=True)
+        return None, None
+
+
+def ingest_local_repo_to_rag_corpus(
+    local_repo_path: Path,
+    rag_corpus_display_name: Optional[str] = None,
+    project_id: str = config.google_config.project_id,
+    location: str = config.google_config.location,
+    gcs_bucket_name: str = config.bucket_name,
+) -> Tuple[Optional[RagCorpus], Optional[ImportRagFilesResponse]]:
+    """
+    Orchestrates cloning a local repo, uploading to GCS, creating a RAG Corpus, and importing files.
+    Relies on Vertex AI's built-in chunking.
+    """
+    repo_name_from_url = local_repo_path.name
+    if not local_repo_path.exists():
+        logger.error(
+            "Local repository path does not exist", local_repo_path=local_repo_path
+        )
+        raise FileNotFoundError(
+            f"Local repository path does not exist: {local_repo_path}"
+        )
+
+    description = (
+        f"RAG corpus for {repo_name_from_url} from local repo [{local_repo_path}]"
+    )
+
+    logger.info(
+        "Starting RAG ingestion pipeline for local repository",
+        local_repo_path=local_repo_path,
+        project_id=project_id,
+        location=location,
+        gcs_bucket_name=gcs_bucket_name,
+    )
+    vertexai.init(project=project_id, location=location)
+
+    try:
+        gcs_bucket_object = get_gcs_bucket(
+            project_id=project_id, bucket_name_to_get=gcs_bucket_name
+        )
+
+        gcs_folder_prefix_uploaded = upload_repo_to_gcs(
+            gcs_bucket_object, local_repo_path
+        )
+
+        gcs_uri_for_import = [
+            f"gs://{gcs_bucket_name}/{gcs_folder_prefix_uploaded.strip('/')}/"
+        ]
+
+        if not rag_corpus_display_name:
+            rag_corpus_display_name = (
+                f"rag-corpus-{repo_name_from_url}-{str(uuid.uuid4())[:8]}"
+            )
+
+        created_corpus = create_rag_corpus(
+            rag_corpus_display_name=rag_corpus_display_name,
+            description=description,
+            project_id=project_id,
+            location=location,
+            embedding_model_name=config.embedding_model,
+        )
+
+        if not created_corpus or not hasattr(created_corpus, "name"):
+            logger.error(
+                "Failed to create RAG corpus or corpus has no name.",
+                corpus_object=created_corpus,
+            )
+            return None, None
+
+        import_response = import_files_to_vertex_rag(
+            rag_corpus_name=created_corpus.name,
+            gcs_uris=gcs_uri_for_import,
+            project_id=project_id,
+            location=location,
+            chunk_size=config.chunk_size,
+            chunk_overlap=config.chunk_overlap,
+        )
+        logger.info(
+            "RAG ingestion pipeline completed for local repository.",
+            local_repo_path=local_repo_path,
             corpus_name=created_corpus.name,
             imported_count=import_response.imported_rag_files_count
             if import_response
