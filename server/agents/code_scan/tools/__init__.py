@@ -1,6 +1,7 @@
 # noqa: F401
 from code_scan.tools.add_corpus import (
     add_corpus_from_github,
+    add_corpus_from_local_repo,
 )
 from code_scan.tools.list_corpora import list_corpora
 from code_scan.tools.list_files import list_files
