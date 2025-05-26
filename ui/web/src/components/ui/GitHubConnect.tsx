@@ -77,7 +77,6 @@ const GitHubConnect = () => {
 
   const handleConnectGitHub = async () => {
     await supabase.auth.signInWithOAuth({ provider: 'github' })
-    // After redirect, useEffect will re-check and update state
   }
 
   const handleRepoToggle = (repoId: number) => {
