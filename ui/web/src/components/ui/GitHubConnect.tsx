@@ -132,7 +132,7 @@ const GitHubConnect = () => {
       )}
       {step === 2 && connected && (
         loadingRepos ? (
-          <div className="text-gray-600">Loading repositories...</div>
+          <div className="skeleton h-32 w-96"></div>
         ) : (
           <SelectReposStep
             repos={repos}
