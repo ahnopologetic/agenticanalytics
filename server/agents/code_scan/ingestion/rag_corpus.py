@@ -51,7 +51,7 @@ IGNORE_PATTERN = [
 ]
 
 
-def clone_github_repo(github_url: str) -> Path:
+def clone_github_repo(github_url: str) -> Tuple[Path, str]:
     repo_path = Path(config.local_repo_path) / github_url.split("/")[-1]
     if repo_path.exists():
         logger.info("Repo already cloned", path=str(repo_path))
@@ -64,7 +64,10 @@ def clone_github_repo(github_url: str) -> Path:
     except git.GitCommandError as e:
         logger.error("Error cloning repository", error=str(e))
         raise
-    return repo_path
+
+    commit_hash = git.Repo(repo_path).head.commit.hexsha
+    logger.info("Commit hash", commit_hash=commit_hash)
+    return repo_path, commit_hash
 
 
 def get_gcs_bucket(
@@ -477,7 +480,7 @@ def ingest_repository_to_rag_corpus(
         repo_name_from_url = github_url.split("/")[-1].replace(".git", "")
         repo_org_and_name = "/".join(github_url.split("/")[-2:]).replace(".git", "")
 
-        local_repo_path = clone_github_repo(github_url)
+        local_repo_path, commit_hash = clone_github_repo(github_url)
 
         gcs_bucket_object = get_gcs_bucket(
             project_id=project_id, bucket_name_to_get=gcs_bucket_name

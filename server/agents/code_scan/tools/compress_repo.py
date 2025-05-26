@@ -1,13 +1,16 @@
 from pathlib import Path
 from repomix import RepoProcessor
 import structlog
+from google.adk.tools import ToolContext
 
 logger = structlog.get_logger()
 
 repomix_config = Path(__file__).parent / "repomix.config.json"
 
 
-def compress_repo(repo_path: str) -> str:
+async def compress_repo(
+    session_id: str, tool_context: ToolContext, repo_path: str
+) -> str:
     """Compress a repository into a single file
 
     Args:
@@ -16,9 +19,18 @@ def compress_repo(repo_path: str) -> str:
     Returns:
         The compressed repository as a string
     """
-
     if isinstance(repo_path, str):
-        repo_path = Path(repo_path)
+        repo_path: Path = Path(repo_path)
+
+    # check artifact service for repo artifact and load it if it exists
+    repo_artifact = await tool_context.load_artifact(
+        f"user:{session_id}:{repo_path.name}"
+    )
+    logger.info("Repo artifact loaded", repo_artifact=repo_artifact)
+
+    if repo_artifact is not None:
+        logger.info("Repo artifact found", repo_artifact=repo_artifact)
+        return "Repo artifact found"
 
     if not repo_path.exists():
         raise FileNotFoundError(f"Repository path {repo_path} does not exist")
