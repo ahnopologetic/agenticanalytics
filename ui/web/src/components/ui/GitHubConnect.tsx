@@ -5,12 +5,11 @@ import ConnectGitHubStep from './github-connect/ConnectGitHubStep'
 import SelectReposStep from './github-connect/SelectReposStep'
 import LabelReposStep from './github-connect/LabelReposStep'
 import StartIndexingStep from './github-connect/StartIndexingStep'
+import { saveGithubToken, getGithubRepos } from '../../api'
 
-const mockRepos = [
-  { id: 1, name: 'agenticanlaytics/app' },
-  { id: 2, name: 'agenticanlaytics/ui' },
-  { id: 3, name: 'agenticanlaytics/infra' },
-]
+// type Repo = { id: number; name: string } // Now using GitHub's repo id (number) and name (string)
+type Repo = { id: number; name: string }
+type GitHubRepo = { id: number; full_name: string }
 
 type RepoLabelState = { [repoId: number]: string }
 
@@ -23,11 +22,14 @@ const stepLabels = [
 
 const GitHubConnect = () => {
   const [step, setStep] = useState(1)
+  const [repos, setRepos] = useState<Repo[]>([])
   const [selectedRepos, setSelectedRepos] = useState<number[]>([])
   const [repoLabels, setRepoLabels] = useState<RepoLabelState>({})
   const [connected, setConnected] = useState(false)
   const [isIndexing, setIsIndexing] = useState(false)
   const [indexingStarted, setIndexingStarted] = useState(false)
+  const [loadingRepos, setLoadingRepos] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -38,18 +40,39 @@ const GitHubConnect = () => {
         return
       }
       // Check for GitHub identity
-      const hasGitHub = data.user.identities?.some(
+      const githubIdentity = data.user.identities?.find(
         (id: { provider: string }) => id.provider === 'github'
       )
-      if (hasGitHub) {
+      if (githubIdentity) {
         setConnected(true)
         setStep(2)
+        // Save GitHub token to backend if available
+        if (githubIdentity.identity_data?.access_token) {
+          try {
+            await saveGithubToken(githubIdentity.identity_data.access_token)
+          } catch {
+            setError('Failed to save GitHub token to backend.')
+          }
+        }
+        // Fetch repos from backend
+        setLoadingRepos(true)
+        setError(null)
+        try {
+          const ghRepos: GitHubRepo[] = await getGithubRepos()
+          // Map GitHub API repos to { id, name }
+          setRepos(ghRepos.map((r) => ({ id: r.id, name: r.full_name })))
+        } catch {
+          setError('Failed to fetch GitHub repositories.')
+        } finally {
+          setLoadingRepos(false)
+        }
       } else {
         setConnected(false)
         setStep(1)
       }
     }
     checkUser()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate])
 
   const handleConnectGitHub = async () => {
@@ -104,21 +127,26 @@ const GitHubConnect = () => {
         ))}
       </ul>
       <h1 className="text-2xl font-bold mb-8">Connect your GitHub</h1>
+      {error && <div className="text-red-500 mb-4">{error}</div>}
       {step === 1 && !connected && (
         <ConnectGitHubStep onConnect={handleConnectGitHub} />
       )}
       {step === 2 && connected && (
-        <SelectReposStep
-          repos={mockRepos}
-          selectedRepos={selectedRepos}
-          onToggle={handleRepoToggle}
-          onContinue={handleContinueToLabel}
-        />
+        loadingRepos ? (
+          <div className="text-gray-600">Loading repositories...</div>
+        ) : (
+          <SelectReposStep
+            repos={repos}
+            selectedRepos={selectedRepos}
+            onToggle={handleRepoToggle}
+            onContinue={handleContinueToLabel}
+          />
+        )
       )}
       {step === 3 && (
         <LabelReposStep
           selectedRepos={selectedRepos}
-          repos={mockRepos}
+          repos={repos}
           repoLabels={repoLabels}
           onLabelChange={handleLabelChange}
           onContinue={handleContinueToIndex}
@@ -127,7 +155,7 @@ const GitHubConnect = () => {
       {step === 4 && (
         <StartIndexingStep
           selectedRepos={selectedRepos}
-          repos={mockRepos}
+          repos={repos}
           repoLabels={repoLabels}
           isIndexing={isIndexing}
           indexingStarted={indexingStarted}

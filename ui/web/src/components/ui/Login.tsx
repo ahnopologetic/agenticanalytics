@@ -7,7 +7,7 @@ const handleLoginWithGoogle = async () => {
 }
 
 const handleLoginWithGitHub = async () => {
-  await supabase.auth.signInWithOAuth({ provider: 'github' })
+  await supabase.auth.signInWithOAuth({ provider: 'github', options: { redirectTo: `${window.location.origin}/github-callback` } })
 }
 
 const Login = () => {

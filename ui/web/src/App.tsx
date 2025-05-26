@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import Login from './components/ui/Login'
 import GitHubConnect from './components/ui/GitHubConnect'
 import Navbar from './components/ui/Navbar'
+import GithubCallback from './components/ui/GithubCallback'
 
 const App = () => (
   <Router>
@@ -9,6 +10,7 @@ const App = () => (
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/github-connect" element={<GitHubConnect />} />
+      <Route path="/github-callback" element={<GithubCallback />} />
       <Route path="*" element={<Login />} />
     </Routes>
   </Router>
