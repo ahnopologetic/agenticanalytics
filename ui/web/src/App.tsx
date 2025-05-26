@@ -11,7 +11,6 @@ const App = () => (
       <Route path="/login" element={<Login />} />
       <Route path="/github-connect" element={<GitHubConnect />} />
       <Route path="/github-callback" element={<GithubCallback />} />
-      <Route path="*" element={<Login />} />
     </Routes>
   </Router>
 )
