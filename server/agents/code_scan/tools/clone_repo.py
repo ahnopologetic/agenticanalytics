@@ -33,7 +33,11 @@ def clone_repo(repo_url: str, local_target_path_str: str = config.local_repo_pat
             f"Repository path {local_repo_path.as_posix()} does not exist"
         )
 
-    shutil.copytree(local_repo_path, local_target_path)
+    if local_target_path == local_repo_path:
+        logger.info("Repository already cloned", path=local_target_path.as_posix())
+        return local_target_path.as_posix()
+    else:
+        shutil.copytree(local_repo_path, local_target_path)
 
     # clean up the local repo path
     shutil.rmtree(local_repo_path)
