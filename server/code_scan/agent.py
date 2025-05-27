@@ -10,8 +10,8 @@ from pydantic import BaseModel
 from code_scan.tools.clone_repo import clone_repo
 from code_scan.tools.compress_repo import compress_repo
 
-ROOT_DIR = Path(__file__).parent.parent.parent
-AGENT_DIR = ROOT_DIR / "agents" / "code_scan"
+ROOT_DIR = Path(__file__).parent.parent
+AGENT_DIR = ROOT_DIR / "code_scan"
 instruction = load_prompt(AGENT_DIR / "agent_compression.prompt.yaml")
 
 

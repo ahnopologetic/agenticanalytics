@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from typing import Optional
 
 import httpx
@@ -7,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from supabase import Client, create_client
+from google.adk.cli.fast_api import get_fast_api_app
 
 from config import config
 from structlog import get_logger
@@ -18,14 +20,11 @@ logger = get_logger()
 supabase: Client = create_client(config.supabase_url, config.supabase_service_role_key)
 
 # --- FastAPI app ---
-app = FastAPI()
-
-app.add_middleware(
-    CORSMiddleware,
+AGENT_DIR = Path(__file__).parent
+app = get_fast_api_app(
+    agent_dir=AGENT_DIR,
     allow_origins=["https://agenticanalytics.vercel.app", "http://localhost:5173"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    web=True,
 )
 
 

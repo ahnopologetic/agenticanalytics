@@ -32,4 +32,29 @@ export const getGithubRepos = async () => {
     });
     if (!res.ok) throw new Error('Failed to fetch GitHub repos');
     return res.json();
-}; 
+};
+
+export const talkToAgent = async (agentId: string, text: string, userId: string, sessionId: string) => {
+    const res = await fetch(`${API_BASE_URL}/run`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            appName: agentId,
+            userId,
+            sessionId,
+            newMessage: {
+                parts: [
+                    {
+                        text
+                    }
+                ],
+                role: 'user',
+            }
+        },
+        )
+    });
+    if (!res.ok) throw new Error('Failed to talk to agent');
+    return res.json();
+};
