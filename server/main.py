@@ -17,6 +17,7 @@ from google.adk.cli.fast_api import get_fast_api_app
 
 from config import config
 from structlog import get_logger
+from utils.github import GitHubClient, clone_repository
 
 logger = get_logger()
 
@@ -130,84 +131,9 @@ async def clone_github_repo(
         .single()
         .execute()
     )
-
     github_token = result.data.get("github_token")
     if github_token is None:
         logger.error("GitHub token not found for user.", user_id=user_id)
         raise HTTPException(status_code=404, detail="GitHub token not found for user.")
 
-    now = int(time.time())
-    jwt_payload = {"iat": now - 60, "exp": now + 600, "iss": config.github_app_id}
-    signed_jwt = jwt.encode(
-        jwt_payload, config.github_app_private_key, algorithm="RS256"
-    )
-
-    async with httpx.AsyncClient() as client:
-        # First get the installation ID for this repository
-        installations_resp = await client.get(
-            "https://api.github.com/app/installations",
-            headers={
-                "Authorization": f"Bearer {signed_jwt}",
-                "Accept": "application/vnd.github+json",
-            },
-        )
-
-        if installations_resp.status_code != 200:
-            logger.error(
-                "Failed to fetch GitHub app installations",
-                installations_resp=installations_resp,
-                installations_resp_json=installations_resp.json(),
-            )
-            raise HTTPException(
-                status_code=installations_resp.status_code,
-                detail="Failed to fetch GitHub app installations",
-            )
-
-        installations = installations_resp.json()
-        if not installations:
-            raise HTTPException(
-                status_code=404, detail="No GitHub app installations found"
-            )
-
-        installation_id = installations[0]["id"]
-
-        # Exchange JWT for installation access token
-        token_resp = await client.post(
-            f"https://api.github.com/app/installations/{installation_id}/access_tokens",
-            headers={
-                "Authorization": f"Bearer {signed_jwt}",
-                "Accept": "application/vnd.github+json",
-            },
-        )
-
-        if token_resp.status_code != 201:
-            logger.error(
-                "Failed to get installation access token",
-                token_resp=token_resp,
-                token_resp_json=token_resp.json(),
-            )
-            raise HTTPException(
-                status_code=token_resp.status_code,
-                detail="Failed to get installation access token",
-            )
-
-        installation_token = token_resp.json()["token"]
-
-    # Create a temporary directory for the clone
-    temp_dir = tempfile.mkdtemp()
-
-    # Construct the repo URL with token for auth
-    repo_url = f"https://x-access-token:{installation_token}@github.com/{request.repo_name}.git"
-
-    try:
-        # Clone the repository
-        repo = Repo.clone_from(repo_url, temp_dir)
-        repo_path = repo.working_dir
-    except git.GitCommandError as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to clone repository: {str(e)}"
-        )
-
-    logger.info("Cloned repository", repo_path=repo_path)
-
-    return repo_path
+    return await clone_repository(request.repo_name)
