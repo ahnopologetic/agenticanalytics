@@ -1,23 +1,17 @@
-import os
 from pathlib import Path
-import tempfile
-import time
-from typing import Optional
+from typing import List, Optional
 
-from git import Repo
-import git
 import httpx
+from config import config
 from fastapi import Depends, FastAPI, Header, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-import jwt
-from pydantic import BaseModel
-from supabase import Client, create_client
 from google.adk.cli.fast_api import get_fast_api_app
-
-from config import config
+from pydantic import BaseModel
 from structlog import get_logger
+from supabase import Client, create_client
 from utils.github import clone_repository
+from utils.repo_mixer import RepoMixer
 
 logger = get_logger()
 
@@ -117,6 +111,10 @@ class CloneRepoRequest(BaseModel):
     repo_name: str
 
 
+class MixReposRequest(BaseModel):
+    repo_names: List[str]
+
+
 @app.post("/github/clone-repo")
 async def clone_github_repo(
     request: CloneRepoRequest,
@@ -137,3 +135,27 @@ async def clone_github_repo(
         raise HTTPException(status_code=404, detail="GitHub token not found for user.")
 
     return await clone_repository(request.repo_name)
+
+
+@app.post("/github/mix-repos")
+async def mix_github_repos(
+    request: MixReposRequest,
+    user_id: str = Depends(get_current_user_id),
+):
+    # Fetch the user's GitHub token from Supabase
+    result = (
+        supabase.table("user_github_tokens")
+        .select("github_token")
+        .eq("user_id", user_id)
+        .single()
+        .execute()
+    )
+    github_token = result.data.get("github_token")
+    if github_token is None:
+        logger.error("GitHub token not found for user.", user_id=user_id)
+        raise HTTPException(status_code=404, detail="GitHub token not found for user.")
+
+    repo_mixer = RepoMixer()
+    mixed_repo_path = await repo_mixer.clone_and_mix(request.repo_names)
+
+    return {"mixed_repo_path": mixed_repo_path}

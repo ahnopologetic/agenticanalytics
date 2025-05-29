@@ -73,3 +73,18 @@ export const cloneGithubRepo = async (repoName: string) => {
     if (!res.ok) throw new Error('Failed to clone GitHub repo');
     return res.json();
 };
+
+export const mixGithubRepos = async (repoNames: string[]) => {
+    const accessToken = await getAccessToken();
+    if (!accessToken) throw new Error('Not authenticated');
+    const res = await fetch(`${API_BASE_URL}/github/mix-repos`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ repo_names: repoNames }),
+    });
+    if (!res.ok) throw new Error('Failed to mix GitHub repos');
+    return res.json();
+};

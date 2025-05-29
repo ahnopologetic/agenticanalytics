@@ -1,11 +1,11 @@
 # Task ID: 1
-# Title: Setup Project Repository
-# Status: in-progress
+# Title: Connect Frontend with Agent Endpoint
+# Status: pending
 # Dependencies: None
-# Priority: high
-# Description: Create a new GitHub repository for Agentic Analytics and initialize it with a README and basic project structure.
+# Priority: medium
+# Description: Integrate the frontend application with the agent endpoint, utilizing a custom tool for cloning and repo-reader for additional functionalities. Ensure all components align with the latest project architecture and requirements.
 # Details:
-1. Create a new repository on GitHub named 'AgenticAnalytics'. 2. Initialize the repository with a README file. 3. Set up a basic directory structure for the project including folders for backend, frontend, and documentation.
+1. Implement API calls in the frontend to connect with the agent endpoint. 2. Use the custom tool to handle the cloning process, ensuring it is invoked correctly from the frontend. 3. Integrate repo-reader for managing repository interactions and data retrieval. 4. Ensure proper error handling and user feedback for API interactions. 5. Update the implementation to reflect the latest project direction and architecture. 6. Test the integration thoroughly to confirm that the frontend communicates effectively with the backend services.
 
 # Test Strategy:
-Verify that the repository is created and accessible, and that the README file is present.
+1. Verify that the frontend can successfully make requests to the agent endpoint. 2. Check that the cloning process is initiated correctly by the custom tool and that it completes without errors. 3. Ensure that repo-reader functions as expected, retrieving and displaying data accurately. 4. Test for error handling by simulating failed API calls and confirming that appropriate messages are shown to the user. 5. Validate that all new dependencies are integrated and functioning as intended.
