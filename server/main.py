@@ -17,7 +17,7 @@ from google.adk.cli.fast_api import get_fast_api_app
 
 from config import config
 from structlog import get_logger
-from utils.github import GitHubClient, clone_repository
+from utils.github import clone_repository
 
 logger = get_logger()
 

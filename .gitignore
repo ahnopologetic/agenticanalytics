@@ -31,3 +31,4 @@ tasks/
 .cursor/mcp.json
 secrets/
 .cursor/mcp.json
+*.prompt.yaml
