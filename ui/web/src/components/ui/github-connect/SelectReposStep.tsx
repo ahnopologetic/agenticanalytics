@@ -4,8 +4,8 @@ type Repo = { id: number; name: string }
 
 type SelectReposStepProps = {
   repos: Repo[]
-  selectedRepos: number[]
-  onToggle: (repo: Repo) => void
+  selectedRepos: Repo[]
+  onToggle: (repoId: number) => void
   onContinue: () => void
 }
 
@@ -28,8 +28,8 @@ const SelectReposStep = ({ repos, selectedRepos, onToggle, onContinue }: SelectR
               <input
                 id={`repo-${repo.id}`}
                 type="checkbox"
-                checked={selectedRepos.includes(repo.id)}
-                onChange={() => onToggle(repo)}
+                checked={selectedRepos.some(r => r.id === repo.id)}
+                onChange={() => onToggle(repo.id)}
                 className="mr-2"
                 aria-label={`Select ${repo.name}`}
               />

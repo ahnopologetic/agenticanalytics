@@ -2,7 +2,6 @@ type Repo = { id: number; name: string }
 
 type StartIndexingStepProps = {
   selectedRepos: Repo[]
-  repos: Repo[]
   repoLabels: { [repoId: number]: string }
   isIndexing: boolean
   indexingStarted: boolean

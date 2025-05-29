@@ -138,7 +138,7 @@ const GitHubConnect = () => {
         ) : (
           <SelectReposStep
             repos={repos}
-            selectedRepos={selectedRepos.map(repo => repo.id)}
+            selectedRepos={selectedRepos}
             onToggle={handleRepoToggle}
             onContinue={handleContinueToLabel}
           />
@@ -155,7 +155,6 @@ const GitHubConnect = () => {
       {step === 4 && (
         <StartIndexingStep
           selectedRepos={selectedRepos}
-          repos={repos}
           repoLabels={repoLabels}
           isIndexing={isIndexing}
           indexingStarted={indexingStarted}
