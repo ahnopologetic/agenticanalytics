@@ -1,8 +1,0 @@
-@import "tailwindcss";
-@plugin "daisyui"{
-  themes: sunset --default, sunset --prefersdark, black;
-}
-
-:root {
-  font-family: 'Montserrat', sans-serif;
-}
