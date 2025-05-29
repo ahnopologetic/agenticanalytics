@@ -1,0 +1,11 @@
+# Task ID: 7
+# Title: Create Minimal Configuration Dashboard
+# Status: pending
+# Dependencies: 6
+# Priority: medium
+# Description: Develop a simple dashboard for users to connect their GitHub repo and manage settings.
+# Details:
+1. Design a minimal UI for connecting to GitHub and inviting team members. 2. Implement backend logic to handle repo connections and user invitations. 3. Ensure that the dashboard is intuitive and easy to use.
+
+# Test Strategy:
+Test the dashboard functionality with multiple users to ensure smooth onboarding and configuration.

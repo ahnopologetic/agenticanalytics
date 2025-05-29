@@ -1,0 +1,11 @@
+# Task ID: 2
+# Title: Implement GitHub API Integration
+# Status: pending
+# Dependencies: 1
+# Priority: high
+# Description: Develop the backend service to connect to the GitHub API for repository access and PR checks.
+# Details:
+1. Use Node.js with Express to create a backend service. 2. Implement OAuth for GitHub authentication. 3. Create endpoints to connect to the GitHub API for fetching repository data and PR information.
+
+# Test Strategy:
+Test API endpoints with Postman to ensure they return expected data from GitHub.

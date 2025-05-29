@@ -1,0 +1,11 @@
+# Task ID: 5
+# Title: Implement PR Check for Event Consistency
+# Status: pending
+# Dependencies: 4
+# Priority: high
+# Description: Create a GitHub Action to validate PRs for event consistency and provide inline feedback.
+# Details:
+1. Define a GitHub Action that triggers on PR creation and updates. 2. Integrate the event detection logic to validate changes in the PR. 3. Return feedback to the PR comments if inconsistencies are found.
+
+# Test Strategy:
+Test the GitHub Action by creating PRs with both valid and invalid event changes to ensure correct feedback is provided.
