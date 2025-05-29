@@ -1,7 +1,7 @@
 type Repo = { id: number; name: string }
 
 type LabelReposStepProps = {
-  selectedRepos: number[]
+  selectedRepos: Repo[]
   repos: Repo[]
   repoLabels: { [repoId: number]: string }
   onLabelChange: (repoId: number, value: string) => void
@@ -12,21 +12,20 @@ const LabelReposStep = ({ selectedRepos, repos, repoLabels, onLabelChange, onCon
   <div className="w-96 bg-white rounded shadow p-6">
     <h2 className="text-lg font-semibold mb-4">Label or explain each repository</h2>
     <form onSubmit={e => { e.preventDefault(); onContinue() }}>
-      {selectedRepos.map(repoId => {
-        const repo = repos.find(r => r.id === repoId)
+      {selectedRepos.map(repo => {
         return (
-          <div key={repoId} className="mb-4">
-            <label htmlFor={`label-${repoId}`} className="block font-medium mb-1">
-              {repo?.name}
+          <div key={repo.id} className="mb-4">
+            <label htmlFor={`label-${repo.id}`} className="block font-medium mb-1">
+              {repo.name}
             </label>
             <input
-              id={`label-${repoId}`}
+              id={`label-${repo.id}`}
               type="text"
-              value={repoLabels[repoId] || ''}
-              onChange={e => onLabelChange(repoId, e.target.value)}
+              value={repoLabels[repo.id] || ''}
+              onChange={e => onLabelChange(repo.id, e.target.value)}
               className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
               placeholder="Add a label or explanation"
-              aria-label={`Label for ${repo?.name}`}
+              aria-label={`Label for ${repo.name}`}
             />
           </div>
         )
