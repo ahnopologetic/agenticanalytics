@@ -146,7 +146,6 @@ const GitHubConnect = () => {
       )}
       {step === 3 && (
         <LabelReposStep
-          repos={repos}
           selectedRepos={selectedRepos}
           repoLabels={repoLabels}
           onLabelChange={handleLabelChange}

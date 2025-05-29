@@ -2,13 +2,12 @@ type Repo = { id: number; name: string }
 
 type LabelReposStepProps = {
   selectedRepos: Repo[]
-  repos: Repo[]
   repoLabels: { [repoId: number]: string }
   onLabelChange: (repoId: number, value: string) => void
   onContinue: () => void
 }
 
-const LabelReposStep = ({ selectedRepos, repos, repoLabels, onLabelChange, onContinue }: LabelReposStepProps) => (
+const LabelReposStep = ({ selectedRepos, repoLabels, onLabelChange, onContinue }: LabelReposStepProps) => (
   <div className="w-96 bg-white rounded shadow p-6">
     <h2 className="text-lg font-semibold mb-4">Label or explain each repository</h2>
     <form onSubmit={e => { e.preventDefault(); onContinue() }}>
