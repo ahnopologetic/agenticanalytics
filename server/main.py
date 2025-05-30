@@ -25,7 +25,7 @@ agent_app = get_fast_api_app(
     allow_origins=["https://agenticanalytics.vercel.app", "http://localhost:5173"],
     web=True,
 )
-app = FastAPI()
+app = FastAPI(root_path="/")
 
 app.mount("/agent", agent_app)
 app.add_middleware(
