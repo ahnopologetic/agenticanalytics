@@ -59,13 +59,17 @@ class RepoReaderTaskManager:
 
         raw_events = []
 
+        final_message = None
+
         # Process events
         async for event in events_async:
             logger.debug("Event", raw_event=event.model_dump(exclude_none=True))
             raw_events.append(event.model_dump(exclude_none=True))
+            if event.is_final_response():
+                final_message = event.content.parts[0].text
 
         return {
-            # "message": message,
+            "message": final_message,
             "status": "success",
             "data": {
                 "raw_events": raw_events,

@@ -69,3 +69,29 @@ export const cloneGithubRepo = async (repoName: string) => {
     if (!res.ok) throw new Error('Failed to clone GitHub repo');
     return res.json();
 };
+
+export type UserSession = {
+    id: string;
+    user_id: string;
+    app_name: string;
+    state: Record<string, unknown>;
+    events: unknown[];
+    last_update_time: number;
+}
+
+export type UserSessionResponse = {
+    sessions: UserSession[];
+    error: string | null;
+}
+
+export const getUserSessions = async (userId: string): Promise<UserSessionResponse> => {
+    const accessToken = await getAccessToken();
+    if (!accessToken) throw new Error('Not authenticated');
+    const res = await fetch(`${API_BASE_URL}/agent/users/${userId}/sessions`, {
+        headers: {
+            'Authorization': `Bearer ${accessToken}`,
+        },
+    });
+    if (!res.ok) throw new Error('Failed to fetch user sessions');
+    return (await res.json()) as UserSessionResponse;
+};

@@ -187,6 +187,14 @@ async def get_session(session_id: str, user_id: str = Depends(get_current_user_i
     return JSONResponse(content=session.model_dump(exclude_none=True))
 
 
+@app.get("/agent/users/{user_id}/sessions")
+async def get_user_sessions(user_id: str):
+    sessions = await repo_reader_task_manager.session_service.list_sessions(
+        app_name="repo-reader", user_id=user_id
+    )
+    return JSONResponse(content=sessions.model_dump(exclude_none=True))
+
+
 @app.post("/agent/run")
 async def run(request: AgentRequest) -> AgentResponse:
     try:

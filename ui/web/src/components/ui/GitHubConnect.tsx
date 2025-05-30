@@ -5,8 +5,9 @@ import ConnectGitHubStep from './github-connect/ConnectGitHubStep'
 import SelectReposStep from './github-connect/SelectReposStep'
 import LabelReposStep from './github-connect/LabelReposStep'
 import StartIndexingStep from './github-connect/StartIndexingStep'
-import { saveGithubToken, getGithubRepos, talkToAgent } from '../../api'
+import { saveGithubToken, getGithubRepos, talkToAgent, getUserSessions } from '../../api'
 import { useUserContext } from '../../hooks/use-user-context'
+import useUserSessions from '../../hooks/use-user-sessions'
 
 // type Repo = { id: number; name: string } // Now using GitHub's repo id (number) and name (string)
 type Repo = { id: number; name: string }
@@ -34,7 +35,20 @@ const GitHubConnect = () => {
   const navigate = useNavigate()
   const { user } = useUserContext()
 
+  if (!user || user.id === null) {
+    navigate('/login')
+  }
+
+
   useEffect(() => {
+    const checkSessions = async () => {
+      if (!user) return
+      const res = await getUserSessions(user.id)
+      if (res.sessions && res.sessions.length > 0) {
+        navigate('/home', { replace: true })
+      }
+    }
+    checkSessions()
     const checkUser = async () => {
       // Check for GitHub identity
       const githubIdentity = user?.identities?.find(
@@ -69,8 +83,7 @@ const GitHubConnect = () => {
       }
     }
     checkUser()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [navigate])
+  }, [navigate, user, user?.id])
 
   const handleConnectGitHub = async () => {
     await supabase.auth.signInWithOAuth({ provider: 'github' })
@@ -103,8 +116,7 @@ const GitHubConnect = () => {
 
   const handleStartIndexing = async () => {
     for (const repo of selectedRepos) {
-      await talkToAgent('repo-reader', repo.name, 'temp_user_id', repo.name)
-      // await cloneGithubRepo(repo.name)
+      await talkToAgent('repo-reader', repo.name, user!.id, repo.name)
     }
     setIsIndexing(true)
     setTimeout(() => {
