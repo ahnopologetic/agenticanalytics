@@ -5,7 +5,8 @@ import ConnectGitHubStep from './github-connect/ConnectGitHubStep'
 import SelectReposStep from './github-connect/SelectReposStep'
 import LabelReposStep from './github-connect/LabelReposStep'
 import StartIndexingStep from './github-connect/StartIndexingStep'
-import { saveGithubToken, getGithubRepos, cloneGithubRepo } from '../../api'
+import { saveGithubToken, getGithubRepos, talkToAgent } from '../../api'
+import { useUserContext } from '../../hooks/use-user-context'
 
 // type Repo = { id: number; name: string } // Now using GitHub's repo id (number) and name (string)
 type Repo = { id: number; name: string }
@@ -31,16 +32,12 @@ const GitHubConnect = () => {
   const [loadingRepos, setLoadingRepos] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const navigate = useNavigate()
+  const { user } = useUserContext()
 
   useEffect(() => {
     const checkUser = async () => {
-      const { data } = await supabase.auth.getUser()
-      if (!data.user) {
-        navigate('/login', { replace: true })
-        return
-      }
       // Check for GitHub identity
-      const githubIdentity = data.user.identities?.find(
+      const githubIdentity = user?.identities?.find(
         (id: { provider: string }) => id.provider === 'github'
       )
       if (githubIdentity) {
@@ -106,7 +103,8 @@ const GitHubConnect = () => {
 
   const handleStartIndexing = async () => {
     for (const repo of selectedRepos) {
-      await cloneGithubRepo(repo.name)
+      await talkToAgent('repo-reader', repo.name, 'temp_user_id', repo.name)
+      // await cloneGithubRepo(repo.name)
     }
     setIsIndexing(true)
     setTimeout(() => {

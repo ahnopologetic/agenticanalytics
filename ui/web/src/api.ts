@@ -35,23 +35,18 @@ export const getGithubRepos = async () => {
 };
 
 export const talkToAgent = async (agentId: string, text: string, userId: string, sessionId: string) => {
-    const res = await fetch(`${API_BASE_URL}/run`, {
+    const res = await fetch(`${API_BASE_URL}/agent/create-task`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-            appName: agentId,
-            userId,
-            sessionId,
-            newMessage: {
-                parts: [
-                    {
-                        text
-                    }
-                ],
-                role: 'user',
-            }
+            message: text,
+            context: {
+                user_id: userId,
+                session_id: sessionId,
+            },
+            session_id: sessionId,
         },
         )
     });
@@ -71,20 +66,5 @@ export const cloneGithubRepo = async (repoName: string) => {
         body: JSON.stringify({ repo_name: repoName }),
     });
     if (!res.ok) throw new Error('Failed to clone GitHub repo');
-    return res.json();
-};
-
-export const mixGithubRepos = async (repoNames: string[]) => {
-    const accessToken = await getAccessToken();
-    if (!accessToken) throw new Error('Not authenticated');
-    const res = await fetch(`${API_BASE_URL}/github/mix-repos`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({ repo_names: repoNames }),
-    });
-    if (!res.ok) throw new Error('Failed to mix GitHub repos');
     return res.json();
 };
