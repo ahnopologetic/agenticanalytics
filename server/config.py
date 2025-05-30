@@ -9,6 +9,7 @@ class ServerConfig(BaseSettings):
     github_app_private_key_path: str
 
     model_config = SettingsConfigDict(env_file=".env")
+    repo_reader_prompt_path: str = Field(..., env="REPO_READER_PROMPT_PATH")
 
     @property
     def github_app_private_key(self) -> str:

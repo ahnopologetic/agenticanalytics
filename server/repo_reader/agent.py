@@ -1,15 +1,11 @@
-from pathlib import Path
-
+from config import config
 from drtail_prompt import load_prompt
 from google.adk.agents import LlmAgent, SequentialAgent
 from google.adk.tools.mcp_tool.mcp_toolset import MCPToolset, StdioServerParameters
 from pydantic import BaseModel
-
 from utils.github import aclone_repository
 
-ROOT_DIR = Path(__file__).parent.parent
-AGENT_DIR = ROOT_DIR / "repo_reader"
-instruction = load_prompt(AGENT_DIR / "agent-compression.prompt.yaml")
+repo_reader_agent_prompt = load_prompt(config.repo_reader_prompt_path)
 
 
 class TrackingAgentOutput(BaseModel):
@@ -26,7 +22,7 @@ class TrackingPlan(BaseModel):
 repo_reader_agent = LlmAgent(
     model="gemini-2.0-flash",
     name="repo_reader",
-    instruction=instruction.messages[0].content,
+    instruction=repo_reader_agent_prompt.messages[0].content,
     tools=[
         aclone_repository,
         MCPToolset(
