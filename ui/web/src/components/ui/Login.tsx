@@ -20,8 +20,8 @@ const Login = () => {
     const checkSessionsAndNavigate = async () => {
       if (!user) return
       try {
-        const sessions = await getUserSessions(user.id)
-        if (sessions.length > 0) {
+        const res = await getUserSessions(user.id)
+        if (res.sessions && res.sessions.length > 0) {
           navigate('/home', { replace: true })
         } else {
           navigate('/github-connect', { replace: true })

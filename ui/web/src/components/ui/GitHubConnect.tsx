@@ -1,13 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { getGithubRepos, getUserSessions, saveGithubToken, talkToAgent } from '../../api'
+import { useUserContext } from '../../hooks/use-user-context'
 import { supabase } from '../../supabaseClient'
 import ConnectGitHubStep from './github-connect/ConnectGitHubStep'
-import SelectReposStep from './github-connect/SelectReposStep'
 import LabelReposStep from './github-connect/LabelReposStep'
+import SelectReposStep from './github-connect/SelectReposStep'
 import StartIndexingStep from './github-connect/StartIndexingStep'
-import { saveGithubToken, getGithubRepos, talkToAgent, getUserSessions } from '../../api'
-import { useUserContext } from '../../hooks/use-user-context'
-import useUserSessions from '../../hooks/use-user-sessions'
 
 // type Repo = { id: number; name: string } // Now using GitHub's repo id (number) and name (string)
 type Repo = { id: number; name: string }
