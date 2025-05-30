@@ -18,6 +18,7 @@ messages:
       ## Available Tools
       - compress_repo(repo_path: str): Compress a repository into a single file
       - clone_repo(repo_url: str, local_target_path: str): Clone a repository from a URL to a local path
+      - save_repomix_artifact(repomix_file_path: str, mime_type: str): Save a repomix file as an artifact
 
       ## Objective
       Find all analytics tracking calls and extract the following metadata:
@@ -57,19 +58,9 @@ messages:
             ...
           ...
         ```
-      Step 3: Compress the repository into a single file.
-
-        Compressed repository will be saved in the following path:
-        ```
-        cloned_repo/
-          repo_1/
-            ...
-            repo_1.compressed.md
-          repo_2/
-            ...
-            repo_2.compressed.md
-          ...
-        ```
+      Step 3: Compress the repository into a single file and save it as an artifact using `save_repomix_artifact` tool.
+        The compressed repository will be saved as an artifact.
+        Use the save_repomix_artifact tool to save the compressed repository as an artifact.
 
       Step 4: Using the compressed repository, search for analytics tracking calls.
 

@@ -13,13 +13,14 @@ logger = get_logger()
 
 
 class RepoReaderTaskManager:
-    def __init__(self, agent: Agent):
+    def __init__(self, agent: Agent, app_name: str):
         self.agent = agent
         self.session_service = InMemorySessionService()
         self.artifact_service = InMemoryArtifactService()
+        self.app_name = app_name
         self.runner = Runner(
             agent=self.agent,
-            app_name="repo-reader",
+            app_name=self.app_name,
             session_service=self.session_service,
             artifact_service=self.artifact_service,
         )
@@ -33,11 +34,11 @@ class RepoReaderTaskManager:
             logger.info(f"Generated new session_id: {session_id}")
 
         session = await self.session_service.get_session(
-            app_name="repo-reader", user_id=user_id, session_id=session_id
+            app_name="repo_reader", user_id=user_id, session_id=session_id
         )
         if not session:
             session = await self.session_service.create_session(
-                app_name="repo-reader", user_id=user_id, session_id=session_id, state={}
+                app_name="repo_reader", user_id=user_id, session_id=session_id, state={}
             )
             logger.info(f"Created new session: {session_id}")
 
@@ -77,4 +78,4 @@ class RepoReaderTaskManager:
         }
 
 
-repo_reader_task_manager = RepoReaderTaskManager(root_agent)
+repo_reader_task_manager = RepoReaderTaskManager(root_agent, "repo_reader")

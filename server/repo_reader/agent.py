@@ -1,7 +1,9 @@
+import structlog
 from config import config
 from drtail_prompt import load_prompt
 from google.adk.agents import LlmAgent, SequentialAgent
 from google.adk.tools.mcp_tool.mcp_toolset import MCPToolset, StdioServerParameters
+from google.adk.tools.tool_context import ToolContext
 from pydantic import BaseModel
 from utils.github import aclone_repository
 
@@ -17,6 +19,28 @@ class TrackingAgentOutput(BaseModel):
 
 class TrackingPlan(BaseModel):
     data: list[TrackingAgentOutput]
+
+
+logger = structlog.get_logger(__name__)
+
+
+async def save_repomix_artifact(
+    tool_context: ToolContext, repomix_file_path: str, mime_type: str
+):
+    """
+    Save a repomix file as an artifact.
+    """
+    import google.genai.types as types
+
+    with open(repomix_file_path, "rb") as f:
+        filename = repomix_file_path.split("/")[-1]
+        artifact = types.Part(
+            inline_data=types.Blob(mime_type=mime_type, data=f.read())
+        )
+        version = await tool_context.save_artifact(filename=filename, artifact=artifact)
+        logger.info(f"Saved artifact {filename} with version {version}")
+
+    return {"status": "success", "repomix_file_path": repomix_file_path}
 
 
 repo_reader_agent = LlmAgent(
@@ -35,6 +59,7 @@ repo_reader_agent = LlmAgent(
                 ],
             ),
         ),
+        save_repomix_artifact,
     ],
     output_key="analyzed_tracking_plan",
 )

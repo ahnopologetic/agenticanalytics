@@ -170,11 +170,12 @@ class AgentResponse(BaseModel):
         None, description="Session identifier for stateful interactions"
     )
 
+DEFAULT_APP_NAME = "repo_reader"
 
 @app.get("/agent/sessions")
 async def get_sessions(user_id: str = Depends(get_current_user_id)):
     sessions = await repo_reader_task_manager.session_service.list_sessions(
-        app_name="repo-reader", user_id=user_id
+        app_name=DEFAULT_APP_NAME, user_id=user_id
     )
     return JSONResponse(content=sessions.model_dump(exclude_none=True))
 
@@ -182,7 +183,7 @@ async def get_sessions(user_id: str = Depends(get_current_user_id)):
 @app.get("/agent/sessions/{session_id}")
 async def get_session(session_id: str, user_id: str = Depends(get_current_user_id)):
     session = await repo_reader_task_manager.session_service.get_session(
-        app_name="repo-reader", user_id=user_id, session_id=session_id
+        app_name=DEFAULT_APP_NAME, user_id=user_id, session_id=session_id
     )
     return JSONResponse(content=session.model_dump(exclude_none=True))
 
@@ -190,7 +191,7 @@ async def get_session(session_id: str, user_id: str = Depends(get_current_user_i
 @app.get("/agent/users/{user_id}/sessions")
 async def get_user_sessions(user_id: str):
     sessions = await repo_reader_task_manager.session_service.list_sessions(
-        app_name="repo-reader", user_id=user_id
+        app_name=DEFAULT_APP_NAME, user_id=user_id
     )
     return JSONResponse(content=sessions.model_dump(exclude_none=True))
 
