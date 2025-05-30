@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from utils.github import aclone_repository
 
 ROOT_DIR = Path(__file__).parent.parent
-AGENT_DIR = ROOT_DIR / "repo-reader"
+AGENT_DIR = ROOT_DIR / "repo_reader"
 instruction = load_prompt(AGENT_DIR / "agent-compression.prompt.yaml")
 
 
