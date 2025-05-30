@@ -1,10 +1,14 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../../supabaseClient'
 import { useCallback, useEffect, useState } from 'react'
+import { getUserSessions } from '../../api'
+import { useUserContext } from '../../hooks/use-user-context'
 
 const Navbar = () => {
   const navigate = useNavigate()
   const [hasLoggedIn, setHasLoggedIn] = useState(false)
+  const [hasSessions, setHasSessions] = useState(false)
+  const { user } = useUserContext()
   useEffect(() => {
     const checkLoggedIn = async () => {
       const { data, error } = await supabase.auth.getSession()
@@ -15,8 +19,21 @@ const Navbar = () => {
       }
       setHasLoggedIn(data.session !== null)
     }
+
+    const hasSesssions = async () => {
+      if (!user) {
+        setHasLoggedIn(false)
+        return
+      }
+      const res = await getUserSessions(user!.id)
+      if (res.sessions && res.sessions.length > 0) {
+        setHasSessions(true)
+      }
+    }
+
     checkLoggedIn()
-  }, [])
+    hasSesssions()
+  }, [user])
   const handleLogout = useCallback(async () => {
     await supabase.auth.signOut()
     navigate('/login', { replace: true })
