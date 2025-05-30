@@ -1,24 +1,25 @@
+import asyncio
 import tempfile
 import time
-from pathlib import Path
-from typing import Optional
 
 import git
 import httpx
 import jwt
+from config import config
 from fastapi import HTTPException
 from git import Repo
-
-from config import config
 from structlog import get_logger
 
 logger = get_logger()
+
 
 async def get_installation_token() -> str:
     """Get GitHub installation access token."""
     now = int(time.time())
     jwt_payload = {"iat": now - 60, "exp": now + 600, "iss": config.github_app_id}
-    signed_jwt = jwt.encode(jwt_payload, config.github_app_private_key, algorithm="RS256")
+    signed_jwt = jwt.encode(
+        jwt_payload, config.github_app_private_key, algorithm="RS256"
+    )
 
     async with httpx.AsyncClient() as client:
         # Get installation ID
@@ -71,10 +72,30 @@ async def get_installation_token() -> str:
 
         return token_resp.json()["token"]
 
-async def clone_repository(repo_name: str) -> str:
-    """Clone a GitHub repository and return the path to the cloned repository."""
+
+async def aclone_repository(repo_name: str, branch: str = "main") -> str:
+    """
+    Clone a GitHub repository and return the path to the cloned repository.
+
+    Args:
+        repo_name: str - the name of the repository to clone (e.g. "facebook/react", "facebook/react-native")
+        branch: str - the name of the branch to clone (defaults to "main")
+
+    Returns:
+        str - the path to the cloned repository
+
+    Raises:
+        HTTPException - if the repository cannot be cloned
+
+    """
+    parts = repo_name.split("/")
+    if len(parts) != 2 or not parts[0] or not parts[1]:
+        raise HTTPException(
+            status_code=400,
+            detail="Repository name must be in the format of 'owner/repo'",
+        )
+
     installation_token = await get_installation_token()
-    
     # Create a temporary directory for the clone
     temp_dir = tempfile.mkdtemp()
 
@@ -82,13 +103,13 @@ async def clone_repository(repo_name: str) -> str:
     repo_url = f"https://x-access-token:{installation_token}@github.com/{repo_name}.git"
 
     try:
-        # Clone the repository
-        repo = Repo.clone_from(repo_url, temp_dir)
+        # Clone the repository with specific branch
+        repo = Repo.clone_from(repo_url, temp_dir, branch=branch)
         repo_path = repo.working_dir
     except git.GitCommandError as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to clone repository: {str(e)}"
         )
 
-    logger.info("Cloned repository", repo_path=repo_path)
-    return repo_path 
+    logger.info("Cloned repository", repo_path=repo_path, branch=branch)
+    return repo_path

@@ -10,8 +10,7 @@ from google.adk.cli.fast_api import get_fast_api_app
 from pydantic import BaseModel
 from structlog import get_logger
 from supabase import Client, create_client
-from utils.github import clone_repository
-from utils.repo_mixer import RepoMixer
+from utils.github import aclone_repository
 
 logger = get_logger()
 
@@ -134,28 +133,5 @@ async def clone_github_repo(
         logger.error("GitHub token not found for user.", user_id=user_id)
         raise HTTPException(status_code=404, detail="GitHub token not found for user.")
 
-    return await clone_repository(request.repo_name)
+    return await aclone_repository(request.repo_name)
 
-
-@app.post("/github/mix-repos")
-async def mix_github_repos(
-    request: MixReposRequest,
-    user_id: str = Depends(get_current_user_id),
-):
-    # Fetch the user's GitHub token from Supabase
-    result = (
-        supabase.table("user_github_tokens")
-        .select("github_token")
-        .eq("user_id", user_id)
-        .single()
-        .execute()
-    )
-    github_token = result.data.get("github_token")
-    if github_token is None:
-        logger.error("GitHub token not found for user.", user_id=user_id)
-        raise HTTPException(status_code=404, detail="GitHub token not found for user.")
-
-    repo_mixer = RepoMixer()
-    mixed_repo_path = await repo_mixer.clone_and_mix(request.repo_names)
-
-    return {"mixed_repo_path": mixed_repo_path}

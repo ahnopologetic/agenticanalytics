@@ -1,8 +1,11 @@
 from pathlib import Path
+
 from drtail_prompt import load_prompt
 from google.adk.agents import LlmAgent, SequentialAgent
 from google.adk.tools.mcp_tool.mcp_toolset import MCPToolset, StdioServerParameters
 from pydantic import BaseModel
+
+from utils.github import aclone_repository
 
 ROOT_DIR = Path(__file__).parent.parent
 AGENT_DIR = ROOT_DIR / "repo-reader"
@@ -15,14 +18,17 @@ class TrackingAgentOutput(BaseModel):
     context: str
     location: str
 
+
 class TrackingPlan(BaseModel):
     data: list[TrackingAgentOutput]
+
 
 repo_reader_agent = LlmAgent(
     model="gemini-2.0-flash",
     name="repo_reader",
     instruction=instruction.messages[0].content,
     tools=[
+        aclone_repository,
         MCPToolset(
             connection_params=StdioServerParameters(
                 command="npx",
@@ -32,7 +38,7 @@ repo_reader_agent = LlmAgent(
                     "--mcp",
                 ],
             ),
-        )
+        ),
     ],
     output_key="analyzed_tracking_plan",
 )
