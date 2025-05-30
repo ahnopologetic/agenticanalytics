@@ -23,30 +23,29 @@ const Navbar = () => {
   }, [navigate])
 
   return (
-    <nav className="flex gap-4 p-4 items-center">
-      {
-        hasLoggedIn ? (
+    <div className="navbar bg-base-100 shadow-md px-4">
+      <div className="flex-1">
+        <Link to="/" className="btn btn-ghost normal-case text-xl" tabIndex={0} aria-label="Agentic Analytics Home">Agentic Analytics</Link>
+      </div>
+      <div className="flex-none gap-2">
+        {hasLoggedIn ? (
           <>
-            <Link to="/github-connect" className="hover:underline">Connect GitHub</Link>
+            <Link to="/github-connect" className="btn btn-ghost" tabIndex={0} aria-label="Connect GitHub">Connect GitHub</Link>
+            <button
+              className="btn btn-error ml-2"
+              onClick={handleLogout}
+              tabIndex={0}
+              aria-label="Logout"
+              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') handleLogout() }}
+            >
+              Logout
+            </button>
           </>
         ) : (
-          <Link to="/login" className="hover:underline">Login</Link>
-        )
-      }
-      {
-        hasLoggedIn ? (
-          <button
-            className="ml-auto px-4 py-2 rounded bg-red-600 text-white font-semibold hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400"
-            onClick={handleLogout}
-            tabIndex={0}
-            aria-label="Logout"
-            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') handleLogout() }}
-          >
-            Logout
-          </button>
-        ) : undefined
-      }
-    </nav>
+          <Link to="/login" className="btn btn-primary" tabIndex={0} aria-label="Login">Login</Link>
+        )}
+      </div>
+    </div>
   )
 }
 
