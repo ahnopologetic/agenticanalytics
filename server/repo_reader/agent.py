@@ -1,10 +1,11 @@
 import structlog
 from config import config
 from drtail_prompt import load_prompt
+from google.genai.types import GenerateContentConfig
 from google.adk.agents import LlmAgent, SequentialAgent
 from google.adk.tools.mcp_tool.mcp_toolset import MCPToolset, StdioServerParameters
 from google.adk.tools.tool_context import ToolContext
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from utils.github import aclone_repository
 
 repo_reader_agent_prompt = load_prompt(config.repo_reader_prompt_path)
@@ -43,6 +44,19 @@ async def save_repomix_artifact(
     return {"status": "success", "repomix_file_path": repomix_file_path}
 
 
+async def save_output_state(tool_context: ToolContext, output: dict):
+    """
+    Save the output state as an artifact.
+    """
+    try:
+        tracking_plan = TrackingPlan(data=output)
+    except ValidationError as e:
+        logger.error(f"Invalid output: {e}")
+        raise e
+
+    tool_context.state["analyzed_tracking_plan"] = tracking_plan.model_dump()
+
+
 repo_reader_agent = LlmAgent(
     model="gemini-2.0-flash",
     name="repo_reader",
@@ -60,8 +74,12 @@ repo_reader_agent = LlmAgent(
             ),
         ),
         save_repomix_artifact,
+        save_output_state,
     ],
     output_key="analyzed_tracking_plan",
+    generate_content_config=GenerateContentConfig(
+        temperature=0.0,
+    ),
 )
 dba_agent = LlmAgent(
     model="gemini-2.0-flash",
