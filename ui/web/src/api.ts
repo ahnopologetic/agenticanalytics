@@ -50,6 +50,7 @@ export const talkToAgent = async (agentId: string, text: string, userId: string,
         },
         )
     });
+    console.log({ agentId, text, userId, sessionId });
     if (!res.ok) throw new Error('Failed to talk to agent');
     return res.json();
 };
