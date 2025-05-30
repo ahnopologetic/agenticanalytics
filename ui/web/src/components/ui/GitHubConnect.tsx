@@ -110,6 +110,7 @@ const GitHubConnect = () => {
     setTimeout(() => {
       setIsIndexing(false)
       setIndexingStarted(true)
+      navigate('/home')
     }, 2000) // Mock indexing delay
   }
 
