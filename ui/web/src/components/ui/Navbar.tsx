@@ -7,7 +7,6 @@ import { useUserContext } from '../../hooks/use-user-context'
 const Navbar = () => {
   const navigate = useNavigate()
   const [hasLoggedIn, setHasLoggedIn] = useState(false)
-  const [hasSessions, setHasSessions] = useState(false)
   const { user } = useUserContext()
   useEffect(() => {
     const checkLoggedIn = async () => {
@@ -27,7 +26,7 @@ const Navbar = () => {
       }
       const res = await getUserSessions(user!.id)
       if (res.sessions && res.sessions.length > 0) {
-        setHasSessions(true)
+        setHasLoggedIn(true)
       }
     }
 

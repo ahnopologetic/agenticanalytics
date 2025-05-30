@@ -76,7 +76,6 @@ repo_reader_agent = LlmAgent(
         save_repomix_artifact,
         save_output_state,
     ],
-    output_key="analyzed_tracking_plan",
     generate_content_config=GenerateContentConfig(
         temperature=0.0,
     ),
