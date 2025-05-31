@@ -1,5 +1,5 @@
-from sub_agents.git_manager.agent import git_manager_agent
-from sub_agents.tracking_plan_analyzer.agent import (
+from .sub_agents.git_manager.agent import git_manager_agent
+from .sub_agents.tracking_plan_analyzer.agent import (
     tracking_plan_analyzer_agent,
 )
 from google.adk.agents import SequentialAgent

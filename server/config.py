@@ -10,6 +10,7 @@ class ServerConfig(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env", extra="allow")
     repo_reader_prompt_path: str = Field(..., env="REPO_READER_PROMPT_PATH")
+    repomix_agent_prompt_path: str = Field(..., env="REPOMIX_AGENT_PROMPT_PATH")
 
     @property
     def github_app_private_key(self) -> str:

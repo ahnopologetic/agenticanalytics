@@ -8,6 +8,7 @@ import jwt
 from config import config
 from fastapi import HTTPException
 from git import Repo
+from google.adk.tools import ToolContext
 from structlog import get_logger
 
 logger = get_logger()
@@ -73,7 +74,9 @@ async def get_installation_token() -> str:
         return token_resp.json()["token"]
 
 
-async def aclone_repository(repo_name: str, branch: str = "main") -> str:
+async def aclone_repository(
+    tool_context: ToolContext, repo_name: str, branch: str = "main"
+) -> str:
     """
     Clone a GitHub repository and return the path to the cloned repository.
 
@@ -112,6 +115,7 @@ async def aclone_repository(repo_name: str, branch: str = "main") -> str:
         )
 
     logger.info("Cloned repository", repo_path=repo_path, branch=branch)
+    tool_context.state["git_repository_path"] = repo_path
     return repo_path
 
 
