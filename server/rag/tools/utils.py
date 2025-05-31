@@ -7,8 +7,8 @@ import re
 from google.adk.tools.tool_context import ToolContext
 from vertexai import rag
 
-from code_scan.config import config
-from code_scan.logger import structlog
+from rag.config import config
+from logger import structlog
 
 logger = structlog.get_logger()
 

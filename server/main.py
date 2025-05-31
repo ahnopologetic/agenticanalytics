@@ -1,41 +1,37 @@
 import os
+import os
 from pathlib import Path
+from typing import Any, List, Optional
 from typing import Any, List, Optional
 
 import httpx
 from config import config
-from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, status
+from fastapi import (
+    BackgroundTasks,
+    Depends,
+    FastAPI,
+    Header,
+    HTTPException,
+    Query,
+    status,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from google.adk.cli.fast_api import get_fast_api_app
 from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field
 from structlog import get_logger
 from supabase import Client, create_client
 from utils.github import aclone_repository
-from repo_reader.runner import repo_reader_task_manager
+from agents.runner import repo_reader_task_manager
 
 logger = get_logger()
 
 
-# --- Config ---
 supabase: Client = create_client(config.supabase_url, config.supabase_service_role_key)
 
-# --- FastAPI app ---
-# AGENT_DIR = Path(__file__).parent
-AGENT_DIR = os.path.abspath(os.path.dirname(__file__))
-# agent_app = get_fast_api_app(
-#     agent_dir=AGENT_DIR,
-#     allow_origins=["https://agenticanalytics.vercel.app", "http://localhost:5173"],
-#     web=True,
-# )
-# app = get_fast_api_app(
-#     agent_dir=AGENT_DIR,
-#     allow_origins=["*"],
-#     web=True,
-# )
 app = FastAPI(root_path="/")
 
-# app.mount("/agent", agent_app)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["https://agenticanalytics.vercel.app", "http://localhost:5173"],
@@ -45,12 +41,10 @@ app.add_middleware(
 )
 
 
-# --- Models ---
 class GitHubTokenRequest(BaseModel):
     github_token: str
 
 
-# --- Helpers ---
 async def get_current_user_id(authorization: Optional[str] = Header(None)) -> str:
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(
@@ -170,30 +164,26 @@ class AgentResponse(BaseModel):
         None, description="Session identifier for stateful interactions"
     )
 
+
 DEFAULT_APP_NAME = "repo_reader"
+
 
 @app.get("/agent/sessions")
 async def get_sessions(user_id: str = Depends(get_current_user_id)):
-    sessions = await repo_reader_task_manager.session_service.list_sessions(
-        app_name=DEFAULT_APP_NAME, user_id=user_id
-    )
+    sessions = await repo_reader_task_manager.list_sessions(user_id=user_id)
     return JSONResponse(content=sessions.model_dump(exclude_none=True))
 
 
-@app.get("/agent/sessions/{session_id}")
-async def get_session(session_id: str, user_id: str = Depends(get_current_user_id)):
-    session = await repo_reader_task_manager.session_service.get_session(
-        app_name=DEFAULT_APP_NAME, user_id=user_id, session_id=session_id
+@app.get("/agent/sessions/session")
+async def get_session(
+    session_id: str = Query(
+        ..., description="The session ID"
+    ),  # because session id shaped like this: owner/repo_name
+    user_id: str = Depends(get_current_user_id),
+):
+    return await repo_reader_task_manager.get_session(
+        session_id=session_id, user_id=user_id
     )
-    return JSONResponse(content=session.model_dump(exclude_none=True))
-
-
-@app.get("/agent/users/{user_id}/sessions")
-async def get_user_sessions(user_id: str):
-    sessions = await repo_reader_task_manager.session_service.list_sessions(
-        app_name=DEFAULT_APP_NAME, user_id=user_id
-    )
-    return JSONResponse(content=sessions.model_dump(exclude_none=True))
 
 
 @app.post("/agent/run")

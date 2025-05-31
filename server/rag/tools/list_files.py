@@ -4,7 +4,7 @@ from google.adk.tools.tool_context import ToolContext
 from pydantic import BaseModel
 from vertexai import rag
 from google.cloud.aiplatform_v1.types.vertex_rag_data import RagFile
-from code_scan.tools.utils import check_corpus_exists
+from rag.tools.utils import check_corpus_exists
 
 logger = structlog.get_logger(__name__)
 

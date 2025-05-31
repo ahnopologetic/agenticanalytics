@@ -7,8 +7,8 @@ from google.adk.sessions import InMemorySessionService
 from google.adk.runners import Runner
 from pydantic import BaseModel
 
-from code_scan.tools.clone_repo import clone_repo
-from code_scan.tools.compress_repo import compress_repo
+from rag.tools.clone_repo import clone_repo
+from rag.tools.compress_repo import compress_repo
 
 ROOT_DIR = Path(__file__).parent.parent
 AGENT_DIR = ROOT_DIR / "code_scan"

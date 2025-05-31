@@ -1,7 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../../supabaseClient'
 import { useCallback, useEffect, useState } from 'react'
-import { getUserSessions } from '../../api'
+import { getUserSessionList } from '../../api'
 import { useUserContext } from '../../hooks/use-user-context'
 
 const Navbar = () => {
@@ -24,7 +24,7 @@ const Navbar = () => {
         setHasLoggedIn(false)
         return
       }
-      const res = await getUserSessions(user!.id)
+      const res = await getUserSessionList()
       if (res.sessions && res.sessions.length > 0) {
         setHasLoggedIn(true)
       }
@@ -39,7 +39,7 @@ const Navbar = () => {
   }, [navigate])
 
   return (
-    <div className="navbar bg-base-100 shadow-md px-4">
+    <div className="navbar bg-base-100 shadow-md px-4 sticky top-0 z-50 border">
       <div className="flex-1">
         <Link to="/" className="btn btn-ghost normal-case text-xl" tabIndex={0} aria-label="Agentic Analytics Home">Agentic Analytics</Link>
       </div>

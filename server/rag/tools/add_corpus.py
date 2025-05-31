@@ -3,11 +3,11 @@ from pathlib import Path
 import structlog
 from typing import Optional
 
-from code_scan.ingestion.rag_corpus import (
+from rag.ingestion.rag_corpus import (
     ingest_local_repo_to_rag_corpus,
     ingest_repository_to_rag_corpus,
 )
-from code_scan.ingestion.config import (
+from rag.ingestion.config import (
     RAGIngestConfig,
 )  # For default project/location
 

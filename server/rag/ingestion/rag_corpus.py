@@ -6,8 +6,8 @@ from typing import Any, List, Optional, Tuple
 
 import git
 import vertexai
-from code_scan.ingestion.config import config
-from code_scan.logger import structlog
+from rag.ingestion.config import config
+from logger import structlog
 from google.cloud import aiplatform_v1beta1, storage
 from google.cloud.aiplatform_v1.types.vertex_rag_data_service import (
     ImportRagFilesResponse,

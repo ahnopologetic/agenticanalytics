@@ -7,8 +7,8 @@ import zipfile
 import google.genai.types as types
 
 
-from code_scan.ingestion.rag_corpus import clone_github_repo
-from code_scan.ingestion.config import config
+from rag.ingestion.rag_corpus import clone_github_repo
+from rag.ingestion.config import config
 import structlog
 from google.adk.tools import ToolContext
 

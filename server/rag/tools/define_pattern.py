@@ -2,7 +2,7 @@ from google.adk.tools.tool_context import ToolContext
 from google.genai import Client
 from pydantic import BaseModel
 
-from code_scan.config import config
+from rag.config import config
 
 
 class DefinePatternOut(BaseModel):
