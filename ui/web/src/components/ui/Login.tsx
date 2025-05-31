@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getUserSessions } from '../../api'
+import { getUserSessionList } from '../../api'
 import { useUserContext } from '../../hooks/use-user-context'
 import { supabase } from '../../supabaseClient'
 
@@ -20,7 +20,7 @@ const Login = () => {
     const checkSessionsAndNavigate = async () => {
       if (!user) return
       try {
-        const res = await getUserSessions(user.id)
+        const res = await getUserSessionList()
         if (res.sessions && res.sessions.length > 0) {
           navigate('/home', { replace: true })
         } else {

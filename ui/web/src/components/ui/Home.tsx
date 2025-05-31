@@ -1,32 +1,27 @@
 import { useEffect, useState } from 'react'
+import { getUserSession, type UserSession } from '../../api'
+import useUserSessions from '../../hooks/use-user-sessions'
 import { useUserContext } from '../../hooks/use-user-context'
-import { useNavigate } from 'react-router-dom'
-import { getUserSessions, type UserSession } from '../../api'
 
 const Home = () => {
-    const navigate = useNavigate()
-    const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null)
     const { user } = useUserContext()
-    const [sessions, setSessions] = useState<UserSession[]>([])
-    if (!user) {
-        navigate('/login')
-    }
+    const { data: sessions, isLoading } = useUserSessions(user?.id ?? '')
+    const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null)
+    const [session, setSession] = useState<UserSession | null>(null)
+
 
     useEffect(() => {
-        const checkSessions = async () => {
-            const res = await getUserSessions(user!.id)
-            if (res.sessions && res.sessions.length > 0) {
-                setSessions(res.sessions)
-                setSelectedSessionId(res.sessions[0].id)
-            }
+        const fetchSession = async () => {
+            if (!selectedSessionId) return
+            const session = await getUserSession(selectedSessionId)
+            setSession(session)
         }
-        checkSessions()
-    }, [user])
+        fetchSession()
+    }, [selectedSessionId])
 
     const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
         const searchTerm = e.target.value
-        const filteredSessions = sessions.filter(session => session.id.includes(searchTerm))
-        setSessions(filteredSessions)
+        setSelectedSessionId(sessions?.sessions.find(session => session.id.includes(searchTerm))?.id ?? null)
     }
 
     return (
@@ -46,28 +41,73 @@ const Home = () => {
                         onChange={handleSearch}
                     />
                 </div>
-                <ul className="menu menu-lg flex-1 overflow-y-auto">
-                    {sessions?.map(session => (
-                        <li key={session.id}>
-                            <button
-                                className={`justify-start w-full text-left ${selectedSessionId === session.id ? 'active' : ''}`}
-                                onClick={() => setSelectedSessionId(session.id)}
-                                tabIndex={0}
-                                aria-label={`Select repository ${session.id}`}
-                            >
-                                <span className="truncate">{session.id}</span>
-                            </button>
+                <ul className="menu menu-lg flex-1 overflow-y-auto w-full">
+                    {isLoading ? (
+                        <li>
+                            <span className="loading loading-spinner loading-lg"></span>
                         </li>
-                    ))}
+                    ) : (
+                        sessions?.sessions.map(session => (
+                            <li key={session.id}>
+                                <button
+                                    className={`justify-start w-full text-left ${selectedSessionId === session.id ? 'text-primary' : ''}`}
+                                    onClick={() => setSelectedSessionId(session.id)}
+                                    tabIndex={0}
+                                    aria-label={`Select repository ${session.id}`}
+                                >
+                                    <span className="truncate">{session.id}</span>
+                                </button>
+                            </li>
+                        )))}
                 </ul>
             </aside>
             {/* Main Content */}
             <main className="flex-1 flex items-center justify-center">
-                {selectedSessionId ? (
-                    <div className="card w-full max-w-2xl bg-base-100 shadow-xl">
-                        <div className="card-body">
-                            <h2 className="card-title text-xl mb-2">{sessions.find(s => s.id === selectedSessionId)?.id}</h2>
-                            <p className="text-base-content/70">Repository analytics and event tracking details will appear here.</p>
+                {session ? (
+                    <div className="card w-full bg-base-100 shadow-xl h-full">
+                        <div className="card-body h-full">
+                            <div className="flex flex-col h-full">
+                                <div className="flex items-center gap-4 mb-6">
+                                    <h2 className="card-title text-2xl">{session.id}</h2>
+                                    <div className="badge badge-primary">{session?.state?.status as string}</div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                                    <div className="stats shadow">
+                                        <div className="stat">
+                                            <div className="stat-title">Total Events</div>
+                                            <div className="stat-value">89,400</div>
+                                            <div className="stat-desc">21% more than last month</div>
+                                        </div>
+                                    </div>
+
+                                    <div className="stats shadow">
+                                        <div className="stat">
+                                            <div className="stat-title">Active Users</div>
+                                            <div className="stat-value">4,200</div>
+                                            <div className="stat-desc text-success">↗︎ 400 (22%)</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex-1 bg-base-200 rounded-lg p-4 max-h-64 overflow-y-auto">
+                                    <h3 className="font-semibold mb-4">Recent Activity</h3>
+                                    <div className="space-y-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-2 h-2 bg-primary rounded-full"></div>
+                                            <p className="text-base-content/70">Repository analytics initialized</p>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-2 h-2 bg-primary rounded-full"></div>
+                                            <p className="text-base-content/70">Event tracking system deployed</p>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-2 h-2 bg-primary rounded-full"></div>
+                                            <p className="text-base-content/70">Data collection started</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 ) : (

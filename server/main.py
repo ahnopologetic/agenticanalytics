@@ -4,7 +4,15 @@ from typing import Any, List, Optional
 
 import httpx
 from config import config
-from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, status
+from fastapi import (
+    BackgroundTasks,
+    Depends,
+    FastAPI,
+    Header,
+    HTTPException,
+    Query,
+    status,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from google.adk.cli.fast_api import get_fast_api_app
@@ -159,26 +167,20 @@ DEFAULT_APP_NAME = "repo_reader"
 
 @app.get("/agent/sessions")
 async def get_sessions(user_id: str = Depends(get_current_user_id)):
-    sessions = await repo_reader_task_manager.session_service.list_sessions(
-        app_name=DEFAULT_APP_NAME, user_id=user_id
-    )
+    sessions = await repo_reader_task_manager.list_sessions(user_id=user_id)
     return JSONResponse(content=sessions.model_dump(exclude_none=True))
 
 
-@app.get("/agent/sessions/{session_id}")
-async def get_session(session_id: str, user_id: str = Depends(get_current_user_id)):
-    session = await repo_reader_task_manager.session_service.get_session(
-        app_name=DEFAULT_APP_NAME, user_id=user_id, session_id=session_id
+@app.get("/agent/sessions/session")
+async def get_session(
+    session_id: str = Query(
+        ..., description="The session ID"
+    ),  # because session id shaped like this: owner/repo_name
+    user_id: str = Depends(get_current_user_id),
+):
+    return await repo_reader_task_manager.get_session(
+        session_id=session_id, user_id=user_id
     )
-    return JSONResponse(content=session.model_dump(exclude_none=True))
-
-
-@app.get("/agent/users/{user_id}/sessions")
-async def get_user_sessions(user_id: str):
-    sessions = await repo_reader_task_manager.session_service.list_sessions(
-        app_name=DEFAULT_APP_NAME, user_id=user_id
-    )
-    return JSONResponse(content=sessions.model_dump(exclude_none=True))
 
 
 @app.post("/agent/run")

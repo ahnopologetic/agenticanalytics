@@ -25,7 +25,7 @@ def _sanitize_analytics_code(
     if not llm_response.content.parts[0].text:
         return llm_response
     logger.info(f"Sanitizing analytics code: {llm_response.content.parts[0].text[:20]}")
-    logger.info(f"State: {callback_context.state}")
+    callback_context.state["status"] = "analyzed"
     return llm_response
 
 
@@ -99,10 +99,12 @@ def _before_agent_callback(callback_context: CallbackContext) -> None:
     state = callback_context.state
     git_repository_path = state.get("git_repository_path")
     if not git_repository_path:
+        callback_context.state["status"] = "failed"
         raise ValueError("Git repository path is not set")
 
     # check if the repository is cloned
     if not os.path.exists(git_repository_path):
+        callback_context.state["status"] = "failed"
         raise ValueError("Git repository is not cloned")
 
 

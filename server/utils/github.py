@@ -116,6 +116,7 @@ async def aclone_repository(
 
     logger.info("Cloned repository", repo_path=repo_path, branch=branch)
     tool_context.state["git_repository_path"] = repo_path
+    tool_context.state["status"] = "cloned"
     return repo_path
 
 

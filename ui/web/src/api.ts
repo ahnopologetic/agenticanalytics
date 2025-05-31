@@ -84,14 +84,26 @@ export type UserSessionResponse = {
     error: string | null;
 }
 
-export const getUserSessions = async (userId: string): Promise<UserSessionResponse> => {
+export const getUserSessionList = async (): Promise<UserSessionResponse> => {
     const accessToken = await getAccessToken();
     if (!accessToken) throw new Error('Not authenticated');
-    const res = await fetch(`${API_BASE_URL}/agent/users/${userId}/sessions`, {
+    const res = await fetch(`${API_BASE_URL}/agent/sessions`, {
         headers: {
             'Authorization': `Bearer ${accessToken}`,
         },
     });
     if (!res.ok) throw new Error('Failed to fetch user sessions');
     return (await res.json()) as UserSessionResponse;
+};
+
+export const getUserSession = async (sessionId: string): Promise<UserSession> => {
+    const accessToken = await getAccessToken();
+    if (!accessToken) throw new Error('Not authenticated');
+    const res = await fetch(`${API_BASE_URL}/agent/sessions/session?session_id=${sessionId}`, {
+        headers: {
+            'Authorization': `Bearer ${accessToken}`,
+        },
+    });
+    if (!res.ok) throw new Error('Failed to fetch user session');
+    return (await res.json()) as UserSession;
 };
