@@ -113,3 +113,35 @@ async def aclone_repository(repo_name: str, branch: str = "main") -> str:
 
     logger.info("Cloned repository", repo_path=repo_path, branch=branch)
     return repo_path
+
+
+async def apull_repository(repo_path: str) -> str:
+    """
+    Pull the repository and return the path to the pulled repository.
+    """
+    try:
+        repo = Repo(repo_path)
+        repo.pull()
+    except git.GitCommandError as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to pull repository: {str(e)}"
+        )
+
+    logger.info("Pulled repository", repo_path=repo_path)
+    return repo_path
+
+
+async def aswitch_branch(repo_path: str, branch: str) -> str:
+    """
+    Switch the branch of the repository and return the path to the repository.
+    """
+    try:
+        repo = Repo(repo_path)
+        repo.git.checkout(branch)
+    except git.GitCommandError as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to switch branch: {str(e)}"
+        )
+
+    logger.info("Switched branch", repo_path=repo_path, branch=branch)
+    return repo_path
