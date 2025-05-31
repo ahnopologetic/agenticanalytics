@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getGithubRepos, getUserSessions, saveGithubToken, talkToAgent } from '../../api'
+import { saveGithubToken, talkToAgent } from '../../api'
+import type { Repo } from '../../api'
 import { useUserContext } from '../../hooks/use-user-context'
 import { supabase } from '../../supabaseClient'
 import ConnectGitHubStep from './github-connect/ConnectGitHubStep'
@@ -8,9 +9,8 @@ import LabelReposStep from './github-connect/LabelReposStep'
 import SelectReposStep from './github-connect/SelectReposStep'
 import StartIndexingStep from './github-connect/StartIndexingStep'
 
-// type Repo = { id: number; name: string } // Now using GitHub's repo id (number) and name (string)
-type Repo = { id: number; name: string }
-type GitHubRepo = { id: number; full_name: string }
+// type Repo = { id: number; name: string } // Now using unified Repo type from api.ts
+// type GitHubRepo = { id: number; full_name: string }
 
 type RepoLabelState = { [repoId: number]: string }
 
@@ -23,13 +23,12 @@ const stepLabels = [
 
 const GitHubConnect = () => {
   const [step, setStep] = useState(1)
-  const [repos, setRepos] = useState<Repo[]>([])
+  // Remove repos state, handled by SelectReposStep
   const [selectedRepos, setSelectedRepos] = useState<Repo[]>([])
   const [repoLabels, setRepoLabels] = useState<RepoLabelState>({})
   const [connected, setConnected] = useState(false)
   const [isIndexing, setIsIndexing] = useState(false)
   const [indexingStarted, setIndexingStarted] = useState(false)
-  const [loadingRepos, setLoadingRepos] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const navigate = useNavigate()
   const { user } = useUserContext()
@@ -37,7 +36,6 @@ const GitHubConnect = () => {
   if (!user || user.id === null) {
     navigate('/login')
   }
-
 
   useEffect(() => {
     const checkSessions = async () => {
@@ -64,18 +62,7 @@ const GitHubConnect = () => {
             setError('Failed to save GitHub token to backend.')
           }
         }
-        // Fetch repos from backend
-        setLoadingRepos(true)
-        setError(null)
-        try {
-          const ghRepos: GitHubRepo[] = await getGithubRepos()
-          // Map GitHub API repos to { id, name }
-          setRepos(ghRepos.map((r) => ({ id: r.id, name: r.full_name })))
-        } catch {
-          setError('Failed to fetch GitHub repositories.')
-        } finally {
-          setLoadingRepos(false)
-        }
+        // No need to fetch repos here
       } else {
         setConnected(false)
         setStep(1)
@@ -143,16 +130,11 @@ const GitHubConnect = () => {
         <ConnectGitHubStep onConnect={handleConnectGitHub} />
       )}
       {step === 2 && connected && (
-        loadingRepos ? (
-          <div className="skeleton h-32 w-96"></div>
-        ) : (
-          <SelectReposStep
-            repos={repos}
-            selectedRepos={selectedRepos}
-            onToggle={handleRepoToggle}
-            onContinue={handleContinueToLabel}
-          />
-        )
+        <SelectReposStep
+          selectedRepos={selectedRepos}
+          onToggle={handleRepoToggle}
+          onContinue={handleContinueToLabel}
+        />
       )}
       {step === 3 && (
         <LabelReposStep

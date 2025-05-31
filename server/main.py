@@ -114,6 +114,66 @@ async def get_github_repos(user_id: str = Depends(get_current_user_id)):
     return JSONResponse(content=gh_resp.json())
 
 
+@app.get("/github/orgs")
+async def get_github_orgs(user_id: str = Depends(get_current_user_id)):
+    # Fetch the user's GitHub token from Supabase
+    result = (
+        supabase.table("user_github_tokens")
+        .select("github_token")
+        .eq("user_id", user_id)
+        .single()
+        .execute()
+    )
+    github_token = result.data.get("github_token")
+    logger.info("GitHub token", github_token=github_token)
+    if github_token is None:
+        raise HTTPException(status_code=404, detail="GitHub token not found for user.")
+
+    async with httpx.AsyncClient() as client:
+        gh_resp = await client.get(
+            "https://api.github.com/user/orgs",
+            headers={
+                "Authorization": f"token {github_token}",
+                "Accept": "application/vnd.github+json",
+            },
+        )
+    if gh_resp.status_code != 200:
+        raise HTTPException(
+            status_code=gh_resp.status_code, detail="Failed to fetch GitHub orgs."
+        )
+    return JSONResponse(content=gh_resp.json())
+
+
+@app.get("/github/orgs/{org}/repos")
+async def get_github_org_repos(org: str, user_id: str = Depends(get_current_user_id)):
+    # Fetch the user's GitHub token from Supabase
+    result = (
+        supabase.table("user_github_tokens")
+        .select("github_token")
+        .eq("user_id", user_id)
+        .single()
+        .execute()
+    )
+    github_token = result.data.get("github_token")
+    logger.info("GitHub token", github_token=github_token)
+    if github_token is None:
+        raise HTTPException(status_code=404, detail="GitHub token not found for user.")
+
+    async with httpx.AsyncClient() as client:
+        gh_resp = await client.get(
+            f"https://api.github.com/orgs/{org}/repos",
+            headers={
+                "Authorization": f"token {github_token}",
+                "Accept": "application/vnd.github+json",
+            },
+        )
+    if gh_resp.status_code != 200:
+        raise HTTPException(
+            status_code=gh_resp.status_code, detail="Failed to fetch GitHub org repos."
+        )
+    return JSONResponse(content=gh_resp.json())
+
+
 class CloneRepoRequest(BaseModel):
     repo_name: str
 

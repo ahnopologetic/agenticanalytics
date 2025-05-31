@@ -95,3 +95,54 @@ export const getUserSessions = async (userId: string): Promise<UserSessionRespon
     if (!res.ok) throw new Error('Failed to fetch user sessions');
     return (await res.json()) as UserSessionResponse;
 };
+
+export const getUserSession = async (sessionId: string): Promise<UserSession> => {
+    const accessToken = await getAccessToken();
+    if (!accessToken) throw new Error('Not authenticated');
+    const res = await fetch(`${API_BASE_URL}/agent/sessions/session?session_id=${sessionId}`, {
+        headers: {
+            'Authorization': `Bearer ${accessToken}`,
+        },
+    });
+    if (!res.ok) throw new Error('Failed to fetch user session');
+    return (await res.json()) as UserSession;
+};
+
+export type Repo = {
+    id: number;
+    name: string;
+    full_name: string;
+    private: boolean;
+    owner?: { login: string };
+    [key: string]: unknown;
+};
+
+export type Org = {
+    id: number;
+    login: string;
+    avatar_url: string;
+};
+
+export const getGithubOrgs = async (): Promise<Org[]> => {
+    const accessToken = await getAccessToken();
+    if (!accessToken) throw new Error('Not authenticated');
+    const res = await fetch(`${API_BASE_URL}/github/orgs`, {
+        headers: {
+            'Authorization': `Bearer ${accessToken}`,
+        },
+    });
+    if (!res.ok) throw new Error('Failed to fetch GitHub orgs');
+    return res.json();
+};
+
+export const getGithubOrgRepos = async (org: string): Promise<Repo[]> => {
+    const accessToken = await getAccessToken();
+    if (!accessToken) throw new Error('Not authenticated');
+    const res = await fetch(`${API_BASE_URL}/github/orgs/${org}/repos`, {
+        headers: {
+            'Authorization': `Bearer ${accessToken}`,
+        },
+    });
+    if (!res.ok) throw new Error('Failed to fetch GitHub org repos');
+    return res.json();
+};
