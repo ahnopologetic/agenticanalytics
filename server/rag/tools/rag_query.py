@@ -7,9 +7,9 @@ from google.adk.tools.tool_context import ToolContext
 from pydantic import BaseModel
 from vertexai import rag
 
-from code_scan.config import config
-from code_scan.logger import structlog
-from code_scan.retrieval.semantic_search_engine import VertexAISemanticSearch
+from rag.config import config
+from logger import structlog
+from rag.retrieval.semantic_search_engine import VertexAISemanticSearch
 
 from .utils import check_corpus_exists, get_corpus_resource_name
 

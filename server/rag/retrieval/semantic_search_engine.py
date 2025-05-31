@@ -6,8 +6,8 @@ from google.cloud import aiplatform_v1beta1
 from vertexai.preview import rag
 from vertexai.preview.rag.utils import resources
 
-from code_scan.config import config
-from code_scan.logger import structlog
+from rag.config import config
+from logger import structlog
 
 logger = structlog.get_logger()
 
@@ -132,7 +132,7 @@ class VertexAISemanticSearch:
 
 def main():
     """Example usage of the VertexAISemanticSearch class."""
-    from code_scan.config import config
+    from rag.config import config
 
     args = argparse.ArgumentParser()
     args.add_argument("query", type=str)

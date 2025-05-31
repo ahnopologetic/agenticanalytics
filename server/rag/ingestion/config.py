@@ -1,7 +1,7 @@
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from code_scan.config import GoogleConfig
+from rag.config import GoogleConfig
 
 
 class RAGIngestConfig(BaseSettings):

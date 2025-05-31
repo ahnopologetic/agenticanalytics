@@ -12,30 +12,15 @@ from pydantic import BaseModel, Field
 from structlog import get_logger
 from supabase import Client, create_client
 from utils.github import aclone_repository
-from repo_reader.runner import repo_reader_task_manager
+from agents.runner import repo_reader_task_manager
 
 logger = get_logger()
 
 
-# --- Config ---
 supabase: Client = create_client(config.supabase_url, config.supabase_service_role_key)
 
-# --- FastAPI app ---
-# AGENT_DIR = Path(__file__).parent
-AGENT_DIR = os.path.abspath(os.path.dirname(__file__))
-# agent_app = get_fast_api_app(
-#     agent_dir=AGENT_DIR,
-#     allow_origins=["https://agenticanalytics.vercel.app", "http://localhost:5173"],
-#     web=True,
-# )
-# app = get_fast_api_app(
-#     agent_dir=AGENT_DIR,
-#     allow_origins=["*"],
-#     web=True,
-# )
 app = FastAPI(root_path="/")
 
-# app.mount("/agent", agent_app)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["https://agenticanalytics.vercel.app", "http://localhost:5173"],
@@ -45,12 +30,10 @@ app.add_middleware(
 )
 
 
-# --- Models ---
 class GitHubTokenRequest(BaseModel):
     github_token: str
 
 
-# --- Helpers ---
 async def get_current_user_id(authorization: Optional[str] = Header(None)) -> str:
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(
@@ -170,7 +153,9 @@ class AgentResponse(BaseModel):
         None, description="Session identifier for stateful interactions"
     )
 
+
 DEFAULT_APP_NAME = "repo_reader"
+
 
 @app.get("/agent/sessions")
 async def get_sessions(user_id: str = Depends(get_current_user_id)):
