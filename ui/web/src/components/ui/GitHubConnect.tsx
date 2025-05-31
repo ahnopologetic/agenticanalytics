@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getGithubRepos, getUserSessionList, saveGithubToken, talkToAgent } from '../../api'
+import { getGithubRepos, saveGithubToken, talkToAgent } from '../../api'
 import { useUserContext } from '../../hooks/use-user-context'
 import { supabase } from '../../supabaseClient'
 import ConnectGitHubStep from './github-connect/ConnectGitHubStep'
