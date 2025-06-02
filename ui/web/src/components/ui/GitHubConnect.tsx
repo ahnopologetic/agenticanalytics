@@ -28,6 +28,8 @@ const GitHubConnect = () => {
   const [indexingStarted, setIndexingStarted] = useState(false)
   const [loadingRepos, setLoadingRepos] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [repoFilter, setRepoFilter] = useState('')
+  const [lastCheckedRepoId, setLastCheckedRepoId] = useState<number | null>(null)
   const navigate = useNavigate()
   const { user } = useUserContext()
 
@@ -67,14 +69,41 @@ const GitHubConnect = () => {
 
   const handleOwnerChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedOwner(e.target.value)
+    setRepoFilter('') // Reset filter when switching owner
   }
 
-  const handleRepoToggle = (repo: Repo) => {
+  const handleRepoToggle = (repo: Repo, e?: React.MouseEvent<HTMLInputElement, MouseEvent>) => {
+    if (e && e.shiftKey && lastCheckedRepoId !== null) {
+      // Shift+click: select range
+      const repoIds = filteredRepos.map(r => r.id)
+      const start = repoIds.indexOf(lastCheckedRepoId)
+      const end = repoIds.indexOf(repo.id)
+      if (start !== -1 && end !== -1) {
+        const [from, to] = start < end ? [start, end] : [end, start]
+        const rangeIds = repoIds.slice(from, to + 1)
+        const shouldSelect = !selectedRepos.some(r => r.id === repo.id)
+        setSelectedRepos(prev => {
+          const prevIds = prev.map(r => r.id)
+          if (shouldSelect) {
+            // Add all in range
+            const toAdd = filteredRepos.filter(r => rangeIds.includes(r.id) && !prevIds.includes(r.id))
+            return [...prev, ...toAdd]
+          } else {
+            // Remove all in range
+            return prev.filter(r => !rangeIds.includes(r.id))
+          }
+        })
+        setLastCheckedRepoId(repo.id)
+        return
+      }
+    }
+    // Normal click: toggle single
     setSelectedRepos(prev =>
       prev.map(r => r.id).includes(repo.id)
         ? prev.filter(r => r.id !== repo.id)
         : [...prev, repo]
     )
+    setLastCheckedRepoId(repo.id)
   }
 
   const handleContinueToLabel = () => {
@@ -109,6 +138,24 @@ const GitHubConnect = () => {
 
   const currentOwner = owners.find(o => o.login === selectedOwner)
   const currentRepos = currentOwner ? currentOwner.repos.map(r => ({ id: r.id, name: r.full_name })) : []
+  const filteredRepos = repoFilter
+    ? currentRepos.filter(repo => repo.name.toLowerCase().includes(repoFilter.toLowerCase()))
+    : currentRepos
+
+  const isAllFilteredSelected = filteredRepos.length > 0 && filteredRepos.every(repo => selectedRepos.some(r => r.id === repo.id))
+
+  const handleSelectAll = () => {
+    if (isAllFilteredSelected) {
+      // Deselect all filtered repos
+      setSelectedRepos(prev => prev.filter(r => !filteredRepos.some(fr => fr.id === r.id)))
+    } else {
+      // Add all filtered repos (avoid duplicates)
+      setSelectedRepos(prev => {
+        const newRepos = filteredRepos.filter(fr => !prev.some(r => r.id === fr.id))
+        return [...prev, ...newRepos]
+      })
+    }
+  }
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen">
@@ -135,29 +182,61 @@ const GitHubConnect = () => {
             <h2 className="text-lg font-semibold mb-4">Select repositories to scan</h2>
             <div className="mb-4">
               <label htmlFor="owner-select" className="block font-medium mb-1">Select owner</label>
-              <select
-                id="owner-select"
-                value={selectedOwner}
-                onChange={handleOwnerChange}
+              <div className="flex items-center gap-2">
+                <select
+                  id="owner-select"
+                  value={selectedOwner}
+                  onChange={handleOwnerChange}
+                  className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  aria-label="Select owner"
+                >
+                  {owners.map(owner => (
+                    <option key={owner.login} value={owner.login}>
+                      {owner.type === 'org' ? 'Org: ' : 'User: '}{owner.login}
+                    </option>
+                  ))}
+                </select>
+                {currentOwner && (
+                  <img
+                    src={currentOwner.avatar_url}
+                    alt={currentOwner.login}
+                    className="w-8 h-8 rounded-full border border-gray-300"
+                  />
+                )}
+              </div>
+            </div>
+            <div className="mb-4">
+              <input
+                type="text"
                 className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
-                aria-label="Select owner"
-              >
-                {owners.map(owner => (
-                  <option key={owner.login} value={owner.login}>
-                    {owner.type === 'org' ? 'Org: ' : 'User: '}{owner.login}
-                  </option>
-                ))}
-              </select>
+                placeholder="Search repositories..."
+                value={repoFilter}
+                onChange={e => setRepoFilter(e.target.value)}
+                aria-label="Filter repositories"
+              />
+            </div>
+            <div className="mb-2 flex items-center">
+              <input
+                id="select-all-repos"
+                type="checkbox"
+                checked={isAllFilteredSelected}
+                onChange={handleSelectAll}
+                className="mr-2"
+                aria-label="Select all filtered repositories"
+              />
+              <label htmlFor="select-all-repos" className="cursor-pointer select-none">
+                Select All
+              </label>
             </div>
             <div className="max-h-80 overflow-y-auto mb-4">
               <ul>
-                {currentRepos.map(repo => (
+                {filteredRepos.map(repo => (
                   <li key={repo.id} className="mb-2 flex items-center">
                     <input
                       id={`repo-${repo.id}`}
                       type="checkbox"
                       checked={selectedRepos.some(r => r.id === repo.id)}
-                      onChange={() => handleRepoToggle(repo)}
+                      onClick={e => handleRepoToggle(repo, e as React.MouseEvent<HTMLInputElement, MouseEvent>)}
                       className="mr-2"
                       aria-label={`Select ${repo.name}`}
                     />
