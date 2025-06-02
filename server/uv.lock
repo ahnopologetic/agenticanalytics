@@ -1492,6 +1492,7 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "a2a-sdk" },
+    { name = "cryptography" },
     { name = "drtail-prompt" },
     { name = "fastapi" },
     { name = "gitpython" },
@@ -1519,6 +1520,7 @@ ingest = [
 [package.metadata]
 requires-dist = [
     { name = "a2a-sdk", specifier = ">=0.2.4" },
+    { name = "cryptography", specifier = ">=42.0.0" },
     { name = "drtail-prompt", git = "https://github.com/drtail/drtail-prompt.git?rev=v0.3.0" },
     { name = "fastapi", specifier = ">=0.110.0" },
     { name = "gitpython", specifier = ">=3.1.44" },
