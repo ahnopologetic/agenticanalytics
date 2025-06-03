@@ -74,11 +74,20 @@ export const cloneGithubRepo = async (repoName: string) => {
     return res.json();
 };
 
+export type TrackingPlanEvent = {
+    event_name: string;
+    properties: Record<string, unknown>;
+    context: string;
+    location: string;
+}
+
 export type UserSession = {
     id: string;
     user_id: string;
     app_name: string;
-    state: Record<string, unknown>;
+    state: Record<string, unknown> | {
+        tracking_plans: TrackingPlanEvent[];
+    };
     events: unknown[];
     last_update_time: number;
 }
