@@ -251,7 +251,7 @@ const Home = () => {
                         </div>
                     </div>
                 ) : (
-                    <div className="text-base-content/60 text-lg">Select a repository from the left to view details.</div>
+                    <div className="text-base-content/60 text-lg h-full flex items-center justify-center">Select a repository from the left to view details.</div>
                 )}
             </main>
         </div>
