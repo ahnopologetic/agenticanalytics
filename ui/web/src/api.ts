@@ -27,6 +27,7 @@ export const getGithubRepos = async () => {
     if (!accessToken) throw new Error('Not authenticated');
     const res = await fetch(`${API_BASE_URL}/github/repos`, {
         headers: {
+            'Content-Type': 'application/json',
             'Authorization': `Bearer ${accessToken}`,
         },
     });
@@ -35,10 +36,13 @@ export const getGithubRepos = async () => {
 };
 
 export const talkToAgent = async (agentId: string, text: string, userId: string, sessionId: string) => {
+    const accessToken = await getAccessToken();
+    if (!accessToken) throw new Error('Not authenticated');
     const res = await fetch(`${API_BASE_URL}/agent/create-task`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`,
         },
         body: JSON.stringify({
             message: text,
@@ -89,6 +93,7 @@ export const getUserSessionList = async (): Promise<UserSessionResponse> => {
     if (!accessToken) throw new Error('Not authenticated');
     const res = await fetch(`${API_BASE_URL}/agent/sessions`, {
         headers: {
+            'Content-Type': 'application/json',
             'Authorization': `Bearer ${accessToken}`,
         },
     });
@@ -101,6 +106,7 @@ export const getUserSession = async (sessionId: string): Promise<UserSession> =>
     if (!accessToken) throw new Error('Not authenticated');
     const res = await fetch(`${API_BASE_URL}/agent/sessions/session?session_id=${sessionId}`, {
         headers: {
+            'Content-Type': 'application/json',
             'Authorization': `Bearer ${accessToken}`,
         },
     });
