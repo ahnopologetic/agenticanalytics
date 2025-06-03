@@ -3,6 +3,8 @@ from pydantic import BaseModel, Field
 from typing import Any, Optional
 from structlog import get_logger
 from agents.runner import repo_reader_task_manager
+from .deps import get_current_user
+from gotrue.types import User
 
 logger = get_logger()
 
@@ -61,23 +63,26 @@ async def get_current_user_id(
 
 # --- Endpoints ---
 @router.get("/sessions")
-async def get_sessions(user_id: str = Depends(get_current_user_id)):
-    sessions = await repo_reader_task_manager.list_sessions(user_id=user_id)
+async def get_sessions(user: User = Depends(get_current_user)):
+    sessions = await repo_reader_task_manager.list_sessions(user_id=user.id)
     return sessions.model_dump(exclude_none=True)
 
 
 @router.get("/sessions/session")
 async def get_session(
     session_id: str = Query(..., description="The session ID"),
-    user_id: str = Depends(get_current_user_id),
+    user: User = Depends(get_current_user),
 ):
     return await repo_reader_task_manager.get_session(
-        session_id=session_id, user_id=user_id
+        session_id=session_id, user_id=user.id
     )
 
 
 @router.post("/run")
-async def run(request: AgentRequest) -> AgentResponse:
+async def run(
+    request: AgentRequest,
+    user: User = Depends(get_current_user),
+) -> AgentResponse:
     try:
         response = await repo_reader_task_manager.execute(
             request.message, request.context, request.session_id
@@ -100,7 +105,11 @@ async def run(request: AgentRequest) -> AgentResponse:
 
 
 @router.post("/create-task")
-async def create_task(request: AgentRequest, background_tasks: BackgroundTasks):
+async def create_task(
+    request: AgentRequest,
+    background_tasks: BackgroundTasks,
+    user: User = Depends(get_current_user),
+):
     try:
         background_tasks.add_task(
             repo_reader_task_manager.execute,
@@ -113,6 +122,7 @@ async def create_task(request: AgentRequest, background_tasks: BackgroundTasks):
             "message": "Task created successfully",
             "data": {},
             "session_id": request.session_id,
+            "user_id": user.id,
         }
     except Exception as e:
         logger.error("Error creating task", error=e)
@@ -121,5 +131,6 @@ async def create_task(request: AgentRequest, background_tasks: BackgroundTasks):
             status="error",
             data={},
             session_id=request.session_id,
+            user_id=user.id,
         )
     return response
