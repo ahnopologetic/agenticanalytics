@@ -209,7 +209,7 @@ const Home = () => {
                                                             </button>
                                                             <div
                                                                 id={`event-panel-${ev.id ?? idx}`}
-                                                                className={`overflow-hidden transition-all duration-300 ${isOpen ? 'max-h-40 py-2 px-4' : 'max-h-0 p-0'}`}
+                                                                className={`overflow-hidden transition-all duration-300 ${isOpen ? 'py-2 px-4' : 'max-h-0 p-0'}`}
                                                                 aria-hidden={!isOpen}
                                                             >
                                                                 {isOpen && (
