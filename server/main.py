@@ -3,6 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from structlog import get_logger
 from config import config
 from supabase import Client, create_client
+from db_models import Base
+from db import engine
 
 from routers.github import router as github_router
 from routers.auth import router as auth_router
@@ -26,3 +28,5 @@ app.add_middleware(
 app.include_router(github_router, prefix="/github")
 app.include_router(auth_router, prefix="/auth")
 app.include_router(agent_router, prefix="/agent")
+
+Base.metadata.create_all(bind=engine)

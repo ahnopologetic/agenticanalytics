@@ -1,10 +1,13 @@
-from fastapi import APIRouter, Request, Response, HTTPException
+from fastapi import APIRouter, Request, Response, HTTPException, Depends
 from config import config
 import secrets
 import uuid
 import httpx
 from cryptography.fernet import Fernet
 from structlog import get_logger
+from sqlalchemy.orm import Session
+from utils.db_session import get_db
+from db_models import Profile
 
 router = APIRouter()
 
@@ -46,7 +49,11 @@ async def github_oauth_login(response: Response):
 
 @router.get("/github/callback")
 async def github_oauth_callback(
-    request: Request, response: Response, code: str, state: str
+    request: Request,
+    response: Response,
+    code: str,
+    state: str,
+    db: Session = Depends(get_db),
 ):
     async with httpx.AsyncClient() as client:
         token_resp = await client.post(
@@ -67,7 +74,6 @@ async def github_oauth_callback(
             raise HTTPException(
                 status_code=400, detail="Failed to obtain GitHub access token."
             )
-        # Get user info
         user_resp = await client.get(
             GITHUB_API_USER_URL,
             headers={
@@ -81,7 +87,6 @@ async def github_oauth_callback(
             raise HTTPException(
                 status_code=400, detail="Failed to get GitHub user info."
             )
-        # Get orgs
         orgs_resp = await client.get(
             GITHUB_API_ORGS_URL,
             headers={
@@ -90,7 +95,6 @@ async def github_oauth_callback(
             },
         )
         orgs = orgs_resp.json() if orgs_resp.status_code == 200 else []
-    # Store encrypted token and github_login in Supabase
     user_id = None
     try:
         auth_header = request.headers.get("Authorization")
@@ -109,27 +113,19 @@ async def github_oauth_callback(
         pass
     encrypted_token = fernet.encrypt(access_token.encode()).decode()
     if user_id:
-        from supabase import Client, create_client
-
-        supabase: Client = create_client(
-            config.supabase_url, config.supabase_service_role_key
-        )
-        data = {
-            "user_id": user_id,
-            "github_token": encrypted_token,
-            "github_login": github_login,
-        }
-        supabase.table("user_github_tokens").upsert(
-            data, on_conflict="user_id"
-        ).execute()
-    # Store orgs, github_login, and encrypted_token in a temporary session
+        profile = db.query(Profile).filter(Profile.id == user_id).first()
+        if profile:
+            profile.name = user_data.get("name")
+            profile.avatar_url = user_data.get("avatar_url")
+            profile.github_token = encrypted_token
+            db.add(profile)
+            db.commit()
     session_id = str(uuid.uuid4())
     github_oauth_sessions[session_id] = {
         "orgs": orgs,
         "github_login": github_login,
         "encrypted_token": encrypted_token,
     }
-    # Redirect to frontend with session_id
     redirect_url = f"{FRONTEND_URL}/github-connect?session_id={session_id}"
     from fastapi.responses import RedirectResponse
 

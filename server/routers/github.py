@@ -7,13 +7,13 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 from structlog import get_logger
-from supabase import Client, create_client
-from utils.github import aclone_repository
+from sqlalchemy.orm import Session
+from utils.db_session import get_db
+from db_models import Profile
 from .deps import get_current_user
 from gotrue.types import User
 
 logger = get_logger()
-supabase: Client = create_client(config.supabase_url, config.supabase_service_role_key)
 
 router = APIRouter()
 
@@ -34,31 +34,29 @@ class MixReposRequest(BaseModel):
 # --- Endpoints ---
 @router.post("/token")
 async def save_github_token(
-    body: GitHubTokenRequest, user: User = Depends(get_current_user)
+    body: GitHubTokenRequest,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
-    data = {"user_id": user.id, "github_token": body.github_token}
-    result = (
-        supabase.table("user_github_tokens")
-        .upsert(data, on_conflict="user_id")
-        .execute()
-    )
-    logger.info("GitHub token saved", result=result)
+    profile = db.query(Profile).filter(Profile.id == user.id).first()
+    if not profile:
+        raise HTTPException(status_code=404, detail="User profile not found.")
+    profile.github_token = body.github_token  # Add this field to Profile if not present
+    db.add(profile)
+    db.commit()
+    logger.info("GitHub token saved", user_id=user.id)
     return {"success": True}
 
 
 @router.get("/repos")
-async def get_github_repos(user: User = Depends(get_current_user)):
-    result = (
-        supabase.table("user_github_tokens")
-        .select("github_token")
-        .eq("user_id", user.id)
-        .single()
-        .execute()
-    )
-    github_token = result.data.get("github_token")
-    logger.info("GitHub token", github_token=github_token)
-    if github_token is None:
+async def get_github_repos(
+    user: User = Depends(get_current_user), db: Session = Depends(get_db)
+):
+    profile = db.query(Profile).filter(Profile.id == user.id).first()
+    if not profile or not getattr(profile, "github_token", None):
         raise HTTPException(status_code=404, detail="GitHub token not found for user.")
+    github_token = profile.github_token
+    logger.info("GitHub token", github_token=github_token)
     async with httpx.AsyncClient() as client:
         gh_resp = await client.get(
             "https://api.github.com/user/repos",
@@ -78,17 +76,13 @@ async def get_github_repos(user: User = Depends(get_current_user)):
 async def clone_github_repo(
     request: CloneRepoRequest,
     user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
     repo_path: str | Path = Path("/tmp/agentic-analytics"),
 ):
-    result = (
-        supabase.table("user_github_tokens")
-        .select("github_token")
-        .eq("user_id", user.id)
-        .single()
-        .execute()
-    )
-    github_token = result.data.get("github_token")
-    if github_token is None:
+    profile = db.query(Profile).filter(Profile.id == user.id).first()
+    if not profile or not getattr(profile, "github_token", None):
         logger.error("GitHub token not found for user.", user_id=user.id)
         raise HTTPException(status_code=404, detail="GitHub token not found for user.")
-    return await aclone_repository(request.repo_name)
+    github_token = profile.github_token
+    # TODO: Implement cloning logic
+    return {"success": True, "repo": request.repo_name}

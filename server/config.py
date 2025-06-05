@@ -16,6 +16,10 @@ class ServerConfig(BaseSettings):
     frontend_base_url: str = Field(..., env="FRONTEND_BASE_URL")
 
     model_config = SettingsConfigDict(env_file=".env", extra="allow")
+
+    # db
+    db_url: str = Field(..., env="DB_URL")
+
     repo_reader_prompt_path: str = Field(..., env="REPO_READER_PROMPT_PATH")
     repomix_agent_prompt_path: str = Field(..., env="REPOMIX_AGENT_PROMPT_PATH")
 
