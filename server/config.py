@@ -19,6 +19,8 @@ class ServerConfig(BaseSettings):
 
     # db
     db_url: str = Field(..., env="DB_URL")
+    supabase_access_token: str = Field(..., env="SUPABASE_ACCESS_TOKEN")
+    supabase_project_ref: str = Field(..., env="SUPABASE_PROJECT_REF")
 
     repo_reader_prompt_path: str = Field(..., env="REPO_READER_PROMPT_PATH")
     repomix_agent_prompt_path: str = Field(..., env="REPOMIX_AGENT_PROMPT_PATH")
