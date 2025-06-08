@@ -126,7 +126,7 @@ const GitHubConnect = () => {
 
   const handleStartIndexing = async () => {
     for (const repo of selectedRepos) {
-      await talkToAgent('repo-reader', repo.name, user!.id, repo.name)
+      await talkToAgent('agentic_analytics', repo.name, user!.id, repo.name)
     }
     setIsIndexing(true)
     setTimeout(() => {
