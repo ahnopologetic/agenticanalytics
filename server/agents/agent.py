@@ -4,6 +4,7 @@ from google.adk.agents.callback_context import CallbackContext
 from agents.sub_agents import (
     git_manager_agent,
     tracking_code_searcher_agent,
+    event_writer,
 )
 
 
@@ -21,6 +22,7 @@ root_agent = SequentialAgent(
     sub_agents=[
         git_manager_agent,
         tracking_code_searcher_agent,
+        event_writer,
     ],
     after_agent_callback=_after_agent_callback,
 )

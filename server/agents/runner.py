@@ -41,7 +41,11 @@ class MainAgentTaskManager:
                 app_name=self.app_name,
                 user_id=user_id,
                 session_id=session_id,
-                state={"status": "not_started"},
+                state={
+                    "status": "not_started",
+                    "user_id": user_id,
+                    "session_id": session_id,
+                },
             )
             session_id = session.id
 

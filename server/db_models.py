@@ -31,7 +31,6 @@ class Repo(Base):
     __tablename__ = "repos"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("profiles.id", ondelete="CASCADE"))
-    github_repo_id = Column(BigInteger, nullable=False)
     name = Column(String, nullable=False)
     label = Column(String)
     description = Column(Text)
@@ -48,7 +47,6 @@ class UserEvent(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     repo_id = Column(UUID(as_uuid=True), ForeignKey("repos.id", ondelete="CASCADE"))
     event_name = Column(String, nullable=False)
-    event_type = Column(String, nullable=False)
     context = Column(Text)
     tags = Column(ARRAY(String))
     file_path = Column(String)

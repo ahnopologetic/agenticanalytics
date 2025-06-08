@@ -13,7 +13,7 @@ class AnalyzeTrackingYamlEventImplementation(BaseModel):
     path: str
     line: int
     function: str
-    description: Optional[str] = None
+    destination: Optional[str] = None
 
 
 class AnalyzeTrackingYamlEventProperty(BaseModel):
@@ -24,6 +24,28 @@ class AnalyzeTrackingYamlEventProperty(BaseModel):
 class AnalyzeTrackingYamlEvent(BaseModel):
     implementations: list[AnalyzeTrackingYamlEventImplementation]
     properties: dict[str, AnalyzeTrackingYamlEventProperty]
+
+    @property
+    def context(self) -> str:
+        return ",".join(
+            [
+                f"{implementation.path}:{implementation.line}@{implementation.function}"
+                for implementation in self.implementations
+            ]
+        )
+
+    @property
+    def tags(self) -> list[str]:
+        return list(
+            set(
+                [
+                    f"destination:{implementation.destination}"
+                    for implementation in self.implementations
+                    if implementation.destination
+                ]
+                # TODO: add more tags
+            )
+        )
 
 
 class AnalyzeTrackingYaml(BaseModel):
@@ -40,6 +62,9 @@ def parse_analyze_tracking_yaml(output_path: str) -> AnalyzeTrackingYaml:
 
     with open(output_path, "r") as f:
         data = yaml.safe_load(f)
+
+    if not data:
+        raise ValueError(f"No data found in {output_path}")
 
     return AnalyzeTrackingYaml.model_validate(data)
 
