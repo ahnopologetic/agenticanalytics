@@ -2,10 +2,11 @@ from typing import Any, Optional
 import uuid
 from google.adk.agents import Agent
 from google.adk.runners import Runner
-from google.adk.artifacts.in_memory_artifact_service import InMemoryArtifactService
-from google.adk.sessions import InMemorySessionService
+from google.adk.artifacts import InMemoryArtifactService, GcsArtifactService
+from google.adk.sessions import InMemorySessionService, DatabaseSessionService
 from google.genai import types as adk_types
 from structlog import get_logger
+from config import config
 
 from agents.agent import root_agent
 
@@ -15,8 +16,16 @@ logger = get_logger()
 class MainAgentTaskManager:
     def __init__(self, agent: Agent, app_name: str):
         self.agent = agent
-        self.session_service = InMemorySessionService()
-        self.artifact_service = InMemoryArtifactService()
+        self.session_service = (
+            InMemorySessionService()
+            if config.env == "dev"
+            else DatabaseSessionService(db_url=config.db_url)
+        )
+        self.artifact_service = (
+            InMemoryArtifactService()
+            if config.env == "dev"
+            else GcsArtifactService(bucket_name="agenticanalytics")
+        )
         self.app_name = app_name
         self.runner = Runner(
             agent=self.agent,
