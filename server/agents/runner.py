@@ -91,14 +91,8 @@ class MainAgentTaskManager:
                 if not event.content.parts or not event.content.parts[0].text:
                     continue
                 final_message = event.content.parts[0].text
-                logger.info(
-                    "status",
-                    app_state=self.runner.session_service.app_state,
-                    user_state=self.runner.session_service.user_state,
-                )
-                logger.info(
-                    "final message", session_id=session.id, final_message=final_message
-                )
+                logger.info("final message", session_id=session.id, final_message=final_message)
+                await self.session_service.append_event(session, event)
 
         return {
             "message": final_message,
