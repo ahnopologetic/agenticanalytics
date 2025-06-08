@@ -1,6 +1,11 @@
 from google.adk.agents import SequentialAgent
-from agents.sub_agents import repo_reader_agent, dba_agent
 from google.adk.agents.callback_context import CallbackContext
+
+from agents.sub_agents import (
+    git_manager_agent,
+    tracking_code_searcher_agent,
+    event_writer,
+)
 
 
 def _after_agent_callback(callback_context: CallbackContext) -> None:
@@ -12,8 +17,12 @@ def _after_agent_callback(callback_context: CallbackContext) -> None:
 
 
 root_agent = SequentialAgent(
-    name="root",
+    name="agentic_analytics",
     description="Analytics Tracking Plan Automation Assistant",
-    sub_agents=[repo_reader_agent, dba_agent],
+    sub_agents=[
+        git_manager_agent,
+        tracking_code_searcher_agent,
+        event_writer,
+    ],
     after_agent_callback=_after_agent_callback,
 )

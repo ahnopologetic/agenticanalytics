@@ -24,12 +24,18 @@ class ServerConfig(BaseSettings):
 
     repo_reader_prompt_path: str = Field(..., env="REPO_READER_PROMPT_PATH")
     repomix_agent_prompt_path: str = Field(..., env="REPOMIX_AGENT_PROMPT_PATH")
+    pattern_matching_analyze_tracking_agent_prompt_path: str = Field(
+        ..., env="PATTERN_MATCHING_ANALYZE_TRACKING_AGENT_PROMPT_PATH"
+    )
+    dependency_reconnaissance_agent_prompt_path: str = Field(
+        ..., env="DEPENDENCY_RECONNAISSANCE_AGENT_PROMPT_PATH"
+    )
 
     @property
     def github_app_private_key(self) -> str:
         with open(self.github_app_private_key_path, "r") as f:
             return f.read()
-    
+
     @property
     def fernet_secret(self) -> bytes:
         if self.fernet_secret_str is None:

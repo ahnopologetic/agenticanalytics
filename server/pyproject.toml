@@ -20,6 +20,8 @@ dependencies = [
     "supabase>=2.3.4",
     "cryptography>=42.0.0",
     "psycopg2-binary>=2.9.10",
+    "langchain-community>=0.3.24",
+    "langchain-experimental>=0.3.4",
 ]
 
 [project.scripts]

@@ -13,7 +13,7 @@ const TrackingPlanSection = ({ events, repoUrl }: { events: TrackingPlanEvent[],
     const filtered = events.filter(e =>
         e.event_name.toLowerCase().includes(search.toLowerCase()) ||
         e.context.toLowerCase().includes(search.toLowerCase()) ||
-        e.location.toLowerCase().includes(search.toLowerCase())
+        e.file_path.toLowerCase().includes(search.toLowerCase())
     )
     return (
         <section className="mt-8">
@@ -36,7 +36,7 @@ const TrackingPlanSection = ({ events, repoUrl }: { events: TrackingPlanEvent[],
                 {filtered.map((event, idx) => {
                     const isOpen = openIdx === idx
                     return (
-                        <div key={event.event_name + event.location} className="border rounded-lg bg-base-100 shadow-sm">
+                        <div key={event.event_name + event.file_path} className="border rounded-lg bg-base-100 shadow-sm">
                             <button
                                 className="w-full flex items-center gap-3 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/40 transition"
                                 onClick={() => setOpenIdx(isOpen ? null : idx)}
@@ -53,11 +53,11 @@ const TrackingPlanSection = ({ events, repoUrl }: { events: TrackingPlanEvent[],
                                 <div className="hidden md:block text-xs text-base-content/50 ml-2 whitespace-nowrap max-w-xs truncate">
                                     <span className="inline-flex items-center gap-1">
                                         <svg className="w-4 h-4 inline-block text-base-content/40" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V7M16 3v4M8 3v4m-5 4h18" /></svg>
-                                        <span className="font-mono">{event.location.split('/').slice(-1)[0]}</span>
+                                        <span className="font-mono">{event.file_path.split('/').slice(-1)[0]}</span>
                                     </span>
                                 </div>
                                 <a
-                                    href={repoUrl + locationToPermlink(event.location)}
+                                    href={repoUrl + locationToPermlink(event.file_path)}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="btn btn-xs btn-ghost ml-2"
@@ -80,9 +80,9 @@ const TrackingPlanSection = ({ events, repoUrl }: { events: TrackingPlanEvent[],
                                             <span className="font-semibold">Context:</span> <span className="text-base-content/80">{event.context}</span>
                                         </div>
                                         <div className="mb-2">
-                                            <span className="font-semibold">Location:</span> <span className="font-mono text-base-content/70">{event.location}</span>
+                                            <span className="font-semibold">Location:</span> <span className="font-mono text-base-content/70">{event.file_path}</span>
                                             <a
-                                                href={repoUrl + locationToPermlink(event.location)}
+                                                href={repoUrl + locationToPermlink(event.file_path)}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="ml-2 text-primary underline text-xs"
@@ -92,7 +92,7 @@ const TrackingPlanSection = ({ events, repoUrl }: { events: TrackingPlanEvent[],
                                         </div>
                                         <div>
                                             <span className="font-semibold">Properties:</span>
-                                            {Object.keys(event.properties).length === 0 ? (
+                                            {Object.keys(event.tags).length === 0 ? (
                                                 <span className="italic text-base-content/50 ml-2">No properties collected</span>
                                             ) : (
                                                 <table className="table table-xs mt-2">
@@ -103,7 +103,7 @@ const TrackingPlanSection = ({ events, repoUrl }: { events: TrackingPlanEvent[],
                                                         </tr>
                                                     </thead>
                                                     <tbody>
-                                                        {Object.entries(event.properties).map(([key, value]) => (
+                                                        {Object.entries(event.tags).map(([key, value]) => (
                                                             <tr key={key}>
                                                                 <td className="font-mono text-xs">{key}</td>
                                                                 <td className="text-xs">{String(value)}</td>

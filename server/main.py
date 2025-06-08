@@ -9,6 +9,7 @@ from db import engine
 from routers.github import router as github_router
 from routers.auth import router as auth_router
 from routers.agent import router as agent_router
+from routers.repo import router as repo_router
 
 logger = get_logger()
 
@@ -28,5 +29,6 @@ app.add_middleware(
 app.include_router(github_router, prefix="/github")
 app.include_router(auth_router, prefix="/auth")
 app.include_router(agent_router, prefix="/agent")
+app.include_router(repo_router, prefix="/repo")
 
 Base.metadata.create_all(bind=engine)

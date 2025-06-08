@@ -5,14 +5,14 @@ from google.adk.runners import Runner
 from google.adk.artifacts.in_memory_artifact_service import InMemoryArtifactService
 from google.adk.sessions import InMemorySessionService
 from google.genai import types as adk_types
-from agents.agent import root_agent
 from structlog import get_logger
 
+from agents.agent import root_agent
 
 logger = get_logger()
 
 
-class RepoReaderTaskManager:
+class MainAgentTaskManager:
     def __init__(self, agent: Agent, app_name: str):
         self.agent = agent
         self.session_service = InMemorySessionService()
@@ -34,14 +34,18 @@ class RepoReaderTaskManager:
             logger.info(f"Generated new session_id: {session_id}")
 
         session = await self.session_service.get_session(
-            app_name="repo_reader", user_id=user_id, session_id=session_id
+            app_name=self.app_name, user_id=user_id, session_id=session_id
         )
         if not session:
             session = await self.session_service.create_session(
-                app_name="repo_reader",
+                app_name=self.app_name,
                 user_id=user_id,
                 session_id=session_id,
-                state={"status": "not_started"},
+                state={
+                    "status": "not_started",
+                    "user_id": user_id,
+                    "session_id": session_id,
+                },
             )
             session_id = session.id
 
@@ -60,6 +64,10 @@ class RepoReaderTaskManager:
                 "status": "error",
                 "data": {},
             }
+        logger.info("Running agent", user_id=user_id, session_id=session_id)
+        logger.info("Request content", request_content=request_content)
+        logger.info("Session", session=session)
+        logger.info("Events async", events_async=events_async)
 
         raw_events = []
 
@@ -93,13 +101,13 @@ class RepoReaderTaskManager:
 
     async def get_session(self, session_id: str, user_id: str):
         return await self.runner.session_service.get_session(
-            app_name="repo_reader", user_id=user_id, session_id=session_id
+            app_name=self.app_name, user_id=user_id, session_id=session_id
         )
 
     async def list_sessions(self, user_id: str):
         return await self.runner.session_service.list_sessions(
-            app_name="repo_reader", user_id=user_id
+            app_name=self.app_name, user_id=user_id
         )
 
 
-repo_reader_task_manager = RepoReaderTaskManager(root_agent, "repo_reader")
+agentic_analytics_task_manager = MainAgentTaskManager(root_agent, "agentic_analytics")
