@@ -51,16 +51,6 @@ execute_sql("INSERT INTO user_events (repo_id, event_name, event_type, context, 
 """
 
 
-def generate_uuid() -> str:
-    """
-    Generate a UUID.
-    return: str
-    """
-    import uuid
-
-    return str(uuid.uuid4())
-
-
 root_agent = LlmAgent(
     model="gemini-2.0-flash",
     name="dba",
@@ -79,6 +69,5 @@ root_agent = LlmAgent(
                 ],
             ),
         ),
-        generate_uuid,
     ],
 )
