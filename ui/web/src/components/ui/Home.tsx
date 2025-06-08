@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { getUserSession } from '../../api'
+import { getUserSession, listRepos } from '../../api'
 import useUserSessions from '../../hooks/use-user-sessions'
 import { useUserContext } from '../../hooks/use-user-context'
 import { useQuery } from '@tanstack/react-query'
@@ -57,12 +57,16 @@ function hasTrackingPlan(state: unknown): state is { tracking_plans: TrackingPla
 
 const Home = () => {
     const { user } = useUserContext()
-    const { data: sessions, isLoading } = useUserSessions(user?.id ?? '')
+    useUserSessions(user?.id ?? '')
     const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null)
     const activityEndRef = useRef<HTMLDivElement>(null)
 
     // Collapsible state: open event ids (or indices if no id)
     const [openEventIds, setOpenEventIds] = useState<(string | number)[]>([])
+
+    // Repos state
+    const [repos, setRepos] = useState<ReturnType<typeof listRepos> extends Promise<infer R> ? R : never>([])
+    const [isReposLoading, setIsReposLoading] = useState(false)
 
     const {
         data: session,
@@ -73,6 +77,14 @@ const Home = () => {
         enabled: !!selectedSessionId,
         refetchInterval: 5000,
     })
+
+    useEffect(() => {
+        setIsReposLoading(true)
+        listRepos()
+            .then(setRepos)
+            .catch(() => setRepos([]))
+            .finally(() => setIsReposLoading(false))
+    }, [])
 
     // Scroll to bottom on new events
     useEffect(() => {
@@ -97,8 +109,11 @@ const Home = () => {
     }
 
     const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const searchTerm = e.target.value
-        setSelectedSessionId(sessions?.sessions.find(session => session.id.includes(searchTerm))?.id ?? null)
+        const searchTerm = e.target.value.toLowerCase()
+        const foundRepo = repos.find(repo =>
+            repo.name.toLowerCase().includes(searchTerm) || repo.id.toString().includes(searchTerm)
+        )
+        setSelectedSessionId(foundRepo ? foundRepo.id.toString() : null)
     }
 
     return (
@@ -119,23 +134,24 @@ const Home = () => {
                     />
                 </div>
                 <ul className="menu menu-lg flex-1 overflow-y-auto w-full">
-                    {isLoading ? (
+                    {isReposLoading ? (
                         <li>
                             <span className="loading loading-spinner loading-lg"></span>
                         </li>
                     ) : (
-                        sessions?.sessions.map(session => (
-                            <li key={session.id}>
+                        repos.map(repo => (
+                            <li key={repo.id}>
                                 <button
-                                    className={`justify-start w-full text-left ${selectedSessionId === session.id ? 'text-primary' : ''}`}
-                                    onClick={() => setSelectedSessionId(session.id)}
+                                    className={`justify-start w-full text-left ${selectedSessionId === repo.id.toString() ? 'text-primary' : ''}`}
+                                    onClick={() => setSelectedSessionId(repo.id.toString())}
                                     tabIndex={0}
-                                    aria-label={`Select repository ${session.id}`}
+                                    aria-label={`Select repository ${repo.name}`}
                                 >
-                                    <span className="truncate">{session.id}</span>
+                                    <span className="truncate">{repo.name}</span>
                                 </button>
                             </li>
-                        )))}
+                        ))
+                    )}
                 </ul>
             </aside>
             {/* Main Content */}
