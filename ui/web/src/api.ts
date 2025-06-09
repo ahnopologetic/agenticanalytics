@@ -35,7 +35,16 @@ export const getGithubRepos = async () => {
     return res.json();
 };
 
-export const talkToAgent = async (agentId: string, text: string, userId: string, sessionId: string) => {
+export type Session = {
+    id: string;
+    app_name: string;
+    user_id: string;
+    state: Record<string, unknown>;
+    events: unknown[];
+    last_update_time: number;
+}
+
+export const talkToAgent = async (agentId: string, text: string, userId: string) => {
     const accessToken = await getAccessToken();
     if (!accessToken) throw new Error('Not authenticated');
     const res = await fetch(`${API_BASE_URL}/agent/create-task`, {
@@ -48,13 +57,11 @@ export const talkToAgent = async (agentId: string, text: string, userId: string,
             message: text,
             context: {
                 user_id: userId,
-                session_id: sessionId,
             },
-            session_id: sessionId,
         },
         )
     });
-    console.log({ agentId, text, userId, sessionId });
+    console.log({ agentId, text, userId });
     if (!res.ok) throw new Error('Failed to talk to agent');
     return res.json();
 };
@@ -132,6 +139,7 @@ type Repo = {
     name: string;
     description: string;
     url: string;
+    session_id?: string;
     created_at: Date;
     updated_at: Date;
 }

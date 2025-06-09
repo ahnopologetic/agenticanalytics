@@ -143,7 +143,7 @@ const Home = () => {
                             <li key={repo.id}>
                                 <button
                                     className={`justify-start w-full text-left ${selectedSessionId === repo.id.toString() ? 'text-primary' : ''}`}
-                                    onClick={() => setSelectedSessionId(repo.id.toString())}
+                                    onClick={() => setSelectedSessionId(repo?.session_id ?? null)}
                                     tabIndex={0}
                                     aria-label={`Select repository ${repo.name}`}
                                 >

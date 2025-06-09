@@ -5,6 +5,7 @@ from structlog import get_logger
 from agents.runner import agentic_analytics_task_manager
 from .deps import get_current_user
 from gotrue.types import User
+from google.adk.sessions.session import Session
 
 logger = get_logger()
 
@@ -75,6 +76,15 @@ async def get_session(
 ):
     return await agentic_analytics_task_manager.get_session(
         session_id=session_id, user_id=user.id
+    )
+
+
+@router.post("/session")
+async def create_session(
+    user: User = Depends(get_current_user),
+) -> Session:
+    return await agentic_analytics_task_manager.create_session(
+        context={"user_id": user.id}, session_id=None
     )
 
 

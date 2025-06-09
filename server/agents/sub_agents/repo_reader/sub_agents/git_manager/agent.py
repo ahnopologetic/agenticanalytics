@@ -31,6 +31,7 @@ def save_repo_to_db(
             url=f"https://github.com/{repo_name}",
             label=repo_name,
             description=f"Repository {repo_name} cloned from {branch} branch",
+            session_id=tool_context.state.get("session_id", ""),
         )
         db_session.add(repo)
         db_session.commit()
