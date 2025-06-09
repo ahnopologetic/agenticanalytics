@@ -57,19 +57,36 @@ async def get_github_repos(
         raise HTTPException(status_code=404, detail="GitHub token not found for user.")
     github_token = profile.github_token
     logger.info("GitHub token", github_token=github_token)
+    all_repos = []
+    page = 1
     async with httpx.AsyncClient() as client:
-        gh_resp = await client.get(
-            "https://api.github.com/user/repos",
-            headers={
-                "Authorization": f"token {github_token}",
-                "Accept": "application/vnd.github+json",
-            },
-        )
-    if gh_resp.status_code != 200:
-        raise HTTPException(
-            status_code=gh_resp.status_code, detail="Failed to fetch GitHub repos."
-        )
-    return gh_resp.json()
+        while True:
+            gh_resp = await client.get(
+                "https://api.github.com/user/repos",
+                headers={
+                    "Authorization": f"token {github_token}",
+                    "Accept": "application/vnd.github+json",
+                },
+                params={
+                    "visibility": "all",
+                    "affiliation": "owner,collaborator,organization_member",
+                    "per_page": 100,
+                    "page": page,
+                },
+            )
+            if gh_resp.status_code != 200:
+                raise HTTPException(
+                    status_code=gh_resp.status_code,
+                    detail="Failed to fetch GitHub repos.",
+                )
+            data = gh_resp.json()
+            if not data:
+                break
+            all_repos.extend(data)
+            if len(data) < 100:
+                break
+            page += 1
+    return all_repos
 
 
 @router.post("/clone-repo")

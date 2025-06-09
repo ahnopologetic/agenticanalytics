@@ -166,16 +166,32 @@ async def github_oauth_repos(session_id: str):
             },
         )
         orgs = orgs_resp.json() if orgs_resp.status_code == 200 else []
-        user_repos_resp = await client.get(
-            "https://api.github.com/user/repos?per_page=100",
-            headers={
-                "Authorization": f"token {access_token}",
-                "Accept": "application/vnd.github+json",
-            },
-        )
-        user_repos = (
-            user_repos_resp.json() if user_repos_resp.status_code == 200 else []
-        )
+        # Fetch all user repos with pagination
+        user_repos = []
+        page = 1
+        while True:
+            user_repos_resp = await client.get(
+                "https://api.github.com/user/repos",
+                headers={
+                    "Authorization": f"token {access_token}",
+                    "Accept": "application/vnd.github+json",
+                },
+                params={
+                    "visibility": "all",
+                    "affiliation": "owner,collaborator,organization_member",
+                    "per_page": 100,
+                    "page": page,
+                },
+            )
+            if user_repos_resp.status_code != 200:
+                break
+            data = user_repos_resp.json()
+            if not data:
+                break
+            user_repos.extend(data)
+            if len(data) < 100:
+                break
+            page += 1
         owners = [
             {
                 "type": "user",
@@ -184,19 +200,34 @@ async def github_oauth_repos(session_id: str):
                 "repos": user_repos,
             }
         ]
+        # Fetch all org repos with pagination
         for org in orgs:
             org_login = org.get("login")
             org_avatar = org.get("avatar_url")
-            org_repos_resp = await client.get(
-                f"https://api.github.com/orgs/{org_login}/repos?per_page=100",
-                headers={
-                    "Authorization": f"token {access_token}",
-                    "Accept": "application/vnd.github+json",
-                },
-            )
-            org_repos = (
-                org_repos_resp.json() if org_repos_resp.status_code == 200 else []
-            )
+            org_repos = []
+            page = 1
+            while True:
+                org_repos_resp = await client.get(
+                    f"https://api.github.com/orgs/{org_login}/repos",
+                    headers={
+                        "Authorization": f"token {access_token}",
+                        "Accept": "application/vnd.github+json",
+                    },
+                    params={
+                        "type": "all",
+                        "per_page": 100,
+                        "page": page,
+                    },
+                )
+                if org_repos_resp.status_code != 200:
+                    break
+                data = org_repos_resp.json()
+                if not data:
+                    break
+                org_repos.extend(data)
+                if len(data) < 100:
+                    break
+                page += 1
             owners.append(
                 {
                     "type": "org",
