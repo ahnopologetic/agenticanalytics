@@ -418,3 +418,23 @@ export const importPlanEvents = async (planId: string, file: File): Promise<Plan
     if (!res.ok) throw new Error('Failed to import plan events');
     return await res.json();
 };
+
+export type GithubRepoInfo = {
+    sha: string;
+    message: string;
+    author: string;
+    date: string;
+    status: string | null;
+};
+
+export const getGithubRepoInfo = async (repoFullName: string): Promise<GithubRepoInfo> => {
+    const accessToken = await getAccessToken();
+    if (!accessToken) throw new Error('Not authenticated');
+    const res = await fetch(`${API_BASE_URL}/github/info?repo=${encodeURIComponent(repoFullName)}`, {
+        headers: {
+            'Authorization': `Bearer ${accessToken}`,
+        },
+    });
+    if (!res.ok) throw new Error('Failed to fetch GitHub repo info');
+    return await res.json();
+};

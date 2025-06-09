@@ -3,7 +3,7 @@ from typing import List
 
 import httpx
 from config import config
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 from structlog import get_logger
@@ -86,3 +86,56 @@ async def clone_github_repo(
     github_token = profile.github_token
     # TODO: Implement cloning logic
     return {"success": True, "repo": request.repo_name}
+
+
+@router.get("/info")
+async def get_github_repo_info(
+    repo: str = Query(..., description="Full repo name, e.g. 'owner/repo'"),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    profile = db.query(Profile).filter(Profile.id == user.id).first()
+    if not profile or not getattr(profile, "github_token", None):
+        raise HTTPException(status_code=404, detail="GitHub token not found for user.")
+    github_token = profile.github_token
+    headers = {
+        "Authorization": f"token {github_token}",
+        "Accept": "application/vnd.github+json",
+    }
+    async with httpx.AsyncClient() as client:
+        # Get latest commit
+        commits_url = f"https://api.github.com/repos/{repo}/commits"
+        commits_resp = await client.get(commits_url, headers=headers)
+        if commits_resp.status_code != 200:
+            logger.error(
+                "Failed to fetch commits.",
+                status_code=commits_resp.status_code,
+                commits_resp=commits_resp.json(),
+            )
+            raise HTTPException(
+                status_code=commits_resp.status_code, detail="Failed to fetch commits."
+            )
+        commits = commits_resp.json()
+        if not commits:
+            raise HTTPException(
+                status_code=404, detail="No commits found for this repo."
+            )
+        latest_commit = commits[0]
+        sha = latest_commit.get("sha")
+        commit_message = latest_commit.get("commit", {}).get("message", "")
+        author = latest_commit.get("commit", {}).get("author", {}).get("name", "")
+        date = latest_commit.get("commit", {}).get("author", {}).get("date", "")
+        # Get status for latest commit
+        status_url = f"https://api.github.com/repos/{repo}/commits/{sha}/status"
+        status_resp = await client.get(status_url, headers=headers)
+        status = None
+        if status_resp.status_code == 200:
+            status_json = status_resp.json()
+            status = status_json.get("state")  # 'success', 'failure', 'pending', etc.
+        return {
+            "sha": sha,
+            "message": commit_message,
+            "author": author,
+            "date": date,
+            "status": status,
+        }
