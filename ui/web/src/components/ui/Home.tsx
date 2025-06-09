@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { getUserSession, listRepos } from '../../api'
+import { getUserSession, listRepos, getGithubRepoInfo, type GithubRepoInfo } from '../../api'
 import useUserSessions from '../../hooks/use-user-sessions'
 import { useUserContext } from '../../hooks/use-user-context'
 import { useQuery } from '@tanstack/react-query'
@@ -58,33 +58,51 @@ function hasTrackingPlan(state: unknown): state is { tracking_plans: TrackingPla
 const Home = () => {
     const { user } = useUserContext()
     useUserSessions(user?.id ?? '')
-    const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null)
+    const [selectedRepoId, setSelectedRepoId] = useState<string | null>(null)
     const activityEndRef = useRef<HTMLDivElement>(null)
-
-    // Collapsible state: open event ids (or indices if no id)
     const [openEventIds, setOpenEventIds] = useState<(string | number)[]>([])
+    const [searchTerm, setSearchTerm] = useState('')
 
     // Repos state
-    const [repos, setRepos] = useState<ReturnType<typeof listRepos> extends Promise<infer R> ? R : never>([])
-    const [isReposLoading, setIsReposLoading] = useState(false)
+    const {
+        data: repos = [],
+        isLoading: isReposLoading,
+    } = useQuery({
+        queryKey: ['repos'],
+        queryFn: listRepos,
+    })
 
+    // Find selected repo object
+    const selectedRepo = repos.find(r => r.id.toString() === selectedRepoId)
+
+    // Fetch GitHub repo info (commit/status) for selected repo
+    const {
+        data: githubInfo,
+        isLoading: isGithubInfoLoading,
+        isError: isGithubInfoError,
+        error: githubInfoError,
+    } = useQuery<GithubRepoInfo, Error>({
+        queryKey: ['github-info', selectedRepo?.url],
+        queryFn: () => {
+            if (!selectedRepo) throw new Error('No repo selected')
+            // Extract owner/repo from URL (e.g., https://github.com/owner/repo)
+            const match = selectedRepo.url.match(/github.com\/(.+\/[^/]+)/)
+            if (!match) throw new Error('Invalid GitHub repo URL')
+            return getGithubRepoInfo(match[1])
+        },
+        enabled: !!selectedRepo,
+    })
+
+    // Session for selected repo
     const {
         data: session,
         isLoading: isSessionLoading,
     } = useQuery({
-        queryKey: ['user-session', selectedSessionId],
-        queryFn: () => selectedSessionId ? getUserSession(selectedSessionId) : Promise.resolve(null),
-        enabled: !!selectedSessionId,
+        queryKey: ['user-session', selectedRepo?.session_id],
+        queryFn: () => selectedRepo?.session_id ? getUserSession(selectedRepo.session_id) : Promise.resolve(null),
+        enabled: !!selectedRepo?.session_id,
         refetchInterval: 5000,
     })
-
-    useEffect(() => {
-        setIsReposLoading(true)
-        listRepos()
-            .then(setRepos)
-            .catch(() => setRepos([]))
-            .finally(() => setIsReposLoading(false))
-    }, [])
 
     // Scroll to bottom on new events
     useEffect(() => {
@@ -109,11 +127,12 @@ const Home = () => {
     }
 
     const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const searchTerm = e.target.value.toLowerCase()
+        const value = e.target.value
+        setSearchTerm(value)
         const foundRepo = repos.find(repo =>
-            repo.name.toLowerCase().includes(searchTerm) || repo.id.toString().includes(searchTerm)
+            repo.name.toLowerCase().includes(value.toLowerCase()) || repo.id.toString().includes(value)
         )
-        setSelectedSessionId(foundRepo ? foundRepo.id.toString() : null)
+        setSelectedRepoId(foundRepo ? foundRepo.id.toString() : null)
     }
 
     return (
@@ -131,6 +150,7 @@ const Home = () => {
                         tabIndex={0}
                         aria-label="Search repositories"
                         onChange={handleSearch}
+                        value={searchTerm}
                     />
                 </div>
                 <ul className="menu menu-lg flex-1 overflow-y-auto w-full">
@@ -142,8 +162,8 @@ const Home = () => {
                         repos.map(repo => (
                             <li key={repo.id}>
                                 <button
-                                    className={`justify-start w-full text-left ${selectedSessionId === repo.id.toString() ? 'text-primary' : ''}`}
-                                    onClick={() => setSelectedSessionId(repo.id.toString())}
+                                    className={`justify-start w-full text-left ${selectedRepoId === repo.id.toString() ? 'text-primary' : ''}`}
+                                    onClick={() => setSelectedRepoId(repo.id.toString())}
                                     tabIndex={0}
                                     aria-label={`Select repository ${repo.name}`}
                                 >
@@ -156,114 +176,131 @@ const Home = () => {
             </aside>
             {/* Main Content */}
             <main className="flex-1 flex flex-col items-center justify-start overflow-y-auto">
-                {isSessionLoading ? (
-                    <div className="text-base-content/60 text-lg">Loading session...</div>
-                ) : session ? (
-                    <div className="card w-full bg-base-100 shadow-xl h-full">
-                        <div className="card-body h-full">
-                            <div className="flex flex-col h-full">
-                                <div className="flex items-center gap-4 mb-6">
-                                    <h2 className="card-title text-2xl">{session.id}</h2>
-                                    {typeof session.state === 'object' && session.state !== null && 'status' in session.state && (
-                                        <div className="badge badge-primary">{(session.state as { status: string }).status}</div>
-                                    )}
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                                    <div className="stats shadow">
-                                        <div className="stat">
-                                            <div className="stat-title">Total Events</div>
-                                            <div className="stat-value">89,400</div>
-                                            <div className="stat-desc">21% more than last month</div>
-                                        </div>
-                                    </div>
-
-                                    <div className="stats shadow">
-                                        <div className="stat">
-                                            <div className="stat-title">Active Users</div>
-                                            <div className="stat-value">4,200</div>
-                                            <div className="stat-desc text-success">↗︎ 400 (22%)</div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="flex-1 bg-base-200 rounded-lg p-4 max-h-[300px] overflow-y-hidden flex flex-col">
-                                    <div className="bg-base-200 pb-2 mb-2 flex items-center justify-between border-b border-base-300">
-                                        <h3 className="font-semibold flex items-center gap-2">
-                                            Recent Activity
-                                            <span className="animate-pulse w-2 h-2 rounded-full bg-green-500" aria-label="Live"></span>
-                                        </h3>
-                                        <span className="badge badge-neutral text-xs font-semibold">{Array.isArray(session.events) ? session.events.length : 0}</span>
-                                    </div>
-                                    <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                                        {Array.isArray(session.events) && session.events.length > 0 ? (
-                                            [...session.events]
-                                                .sort((a, b) => (a as SessionEvent).timestamp - (b as SessionEvent).timestamp)
-                                                .map((event, idx) => {
-                                                    const ev = event as SessionEvent
-                                                    const isOpen = openEventIds.includes(ev.id ?? idx)
-                                                    return (
-                                                        <div key={ev.id ?? idx} className="border rounded-lg bg-base-100 shadow-sm">
-                                                            <button
-                                                                className="w-full flex items-center gap-3 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/40 transition"
-                                                                onClick={() => handleToggleEvent(ev.id ?? idx)}
-                                                                aria-expanded={isOpen}
-                                                                aria-controls={`event-panel-${ev.id ?? idx}`}
-                                                            >
-                                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold ${getAuthorColor(ev.author)}`}
-                                                                    title={ev.author}
-                                                                    aria-label={ev.author}
-                                                                >
-                                                                    {ev.author?.[0]?.toUpperCase() || '?'}
-                                                                </div>
-                                                                <div className="flex-1 text-left">
-                                                                    <div className="text-base-content font-medium line-clamp-1">{ev.author}</div>
-                                                                    <div className="text-base-content/80 text-sm line-clamp-1">{getEventText(ev)}</div>
-                                                                </div>
-                                                                <div className="text-xs text-base-content/50 ml-2 whitespace-nowrap">{getRelativeTime(ev.timestamp)}</div>
-                                                                <span className={`ml-2 transition-transform ${isOpen ? 'rotate-90' : ''}`}>▶</span>
-                                                            </button>
-                                                            <div
-                                                                id={`event-panel-${ev.id ?? idx}`}
-                                                                className={`overflow-hidden transition-all duration-300 ${isOpen ? 'py-2 px-4' : 'max-h-0 p-0'}`}
-                                                                aria-hidden={!isOpen}
-                                                            >
-                                                                {isOpen && (
-                                                                    <div>
-                                                                        <div className="text-base-content/80 whitespace-pre-line break-words mb-2">{getEventText(ev)}</div>
-                                                                        <div className="text-xs text-base-content/50">Event ID: {ev.id ?? idx}</div>
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    )
-                                                })
-                                        ) : (
-                                            <div className="text-base-content/60">No activity yet.</div>
+                {selectedRepo ? (
+                    <div className="w-full max-w-6xl mx-auto p-6">
+                        {/* Repo Info Section */}
+                        <div className="flex flex-col gap-4 mb-6 border-b pb-4 lg:flex-row lg:items-center lg:justify-between">
+                            <div className="flex items-center gap-3">
+                                <h2 className="text-3xl font-bold">{selectedRepo.name}</h2>
+                                <a
+                                    href={selectedRepo.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    aria-label="View on GitHub"
+                                    tabIndex={0}
+                                    className="text-gray-500 hover:text-black"
+                                >
+                                    <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                        <path d="M12 0.297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.387 0.6 0.113 0.82-0.258 0.82-0.577 0-0.285-0.011-1.04-0.017-2.04-3.338 0.726-4.042-1.416-4.042-1.416-0.546-1.387-1.333-1.756-1.333-1.756-1.089-0.745 0.083-0.729 0.083-0.729 1.205 0.084 1.84 1.237 1.84 1.237 1.07 1.834 2.809 1.304 3.495 0.997 0.108-0.775 0.418-1.305 0.762-1.605-2.665-0.305-5.466-1.334-5.466-5.931 0-1.311 0.469-2.381 1.236-3.221-0.124-0.303-0.535-1.523 0.117-3.176 0 0 1.008-0.322 3.301 1.23 0.957-0.266 1.983-0.399 3.003-0.404 1.02 0.005 2.047 0.138 3.006 0.404 2.291-1.553 3.297-1.23 3.297-1.23 0.653 1.653 0.242 2.873 0.118 3.176 0.77 0.84 1.235 1.91 1.235 3.221 0 4.609-2.803 5.624-5.475 5.921 0.43 0.371 0.823 1.102 0.823 2.222 0 1.606-0.015 2.898-0.015 3.293 0 0.322 0.216 0.694 0.825 0.576 4.765-1.589 8.199-6.085 8.199-11.386 0-6.627-5.373-12-12-12z" />
+                                    </svg>
+                                </a>
+                            </div>
+                            <div className="flex flex-col gap-2 lg:items-end lg:flex-row lg:items-center">
+                                {selectedRepo.description && (
+                                    <div className="text-base-content/80 text-sm max-w-md line-clamp-2">{selectedRepo.description}</div>
+                                )}
+                                {/* Commit and status info */}
+                                {isGithubInfoLoading && (
+                                    <div className="text-xs text-base-content/60">Loading commit info...</div>
+                                )}
+                                {isGithubInfoError && (
+                                    <div className="text-xs text-error">{githubInfoError?.message || 'Failed to load commit info'}</div>
+                                )}
+                                {githubInfo && (
+                                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                                        <span className="font-mono bg-base-200 px-2 py-1 rounded">{githubInfo.sha.slice(0, 7)}</span>
+                                        <button
+                                            className="font-semibold truncate max-w-[200px] text-left hover:underline focus:underline focus:outline-none cursor-pointer"
+                                            onClick={() => {
+                                                const commitUrl = `${selectedRepo.url}/commit/${githubInfo.sha}?from=agentic-analytics`
+                                                window.open(commitUrl, '_blank', 'noopener,noreferrer')
+                                            }}
+                                            aria-label={`View commit ${githubInfo.sha} on GitHub`}
+                                            tabIndex={0}
+                                        >
+                                            {githubInfo.message}
+                                        </button>
+                                        <span className="text-base-content/60">by {githubInfo.author} on {new Date(githubInfo.date).toLocaleString()}</span>
+                                        {githubInfo.status && (
+                                            <span className={`badge ${githubInfo.status === 'success' ? 'badge-success' : githubInfo.status === 'failure' ? 'badge-error' : 'badge-warning'}`}>{githubInfo.status}</span>
                                         )}
-                                        <div ref={activityEndRef} />
                                     </div>
-                                    {/* Fade-in animation keyframes */}
-                                    <style>{`
-                                        @keyframes fadein {
-                                            from { opacity: 0; transform: translateY(10px); }
-                                            to { opacity: 1; transform: none; }
-                                        }
-                                        .animate-fadein {
-                                            animation: fadein 0.5s ease;
-                                        }
-                                    `}</style>
+                                )}
+                            </div>
+                        </div>
+                        {/* Main Grid: Recent Activity & Tracking Plan */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Recent Activity */}
+                            <section className="bg-base-100 rounded-lg p-4 shadow flex flex-col max-h-[400px]">
+                                <div className="flex items-center justify-between border-b pb-2 mb-2">
+                                    <h3 className="font-semibold flex items-center gap-2">
+                                        Recent Activity
+                                        <span className="animate-pulse w-2 h-2 rounded-full bg-green-500" aria-label="Live"></span>
+                                    </h3>
+                                    <span className="badge badge-neutral text-xs font-semibold">{Array.isArray(session?.events) ? session.events.length : 0}</span>
                                 </div>
-                                {/* Tracking Plan Section - use real data */}
+                                <div className="space-y-2 overflow-y-auto">
+                                    {isSessionLoading ? (
+                                        <div className="text-base-content/60">Loading session...</div>
+                                    ) : Array.isArray(session?.events) && session.events.length > 0 ? (
+                                        [...session.events]
+                                            .sort((a, b) => (a as SessionEvent).timestamp - (b as SessionEvent).timestamp)
+                                            .map((event, idx) => {
+                                                const ev = event as SessionEvent
+                                                const isOpen = openEventIds.includes(ev.id ?? idx)
+                                                return (
+                                                    <div key={ev.id ?? idx} className="border rounded-lg bg-base-100 shadow-sm">
+                                                        <button
+                                                            className="w-full flex items-center gap-3 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/40 transition"
+                                                            onClick={() => handleToggleEvent(ev.id ?? idx)}
+                                                            aria-expanded={isOpen}
+                                                            aria-controls={`event-panel-${ev.id ?? idx}`}
+                                                        >
+                                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold ${getAuthorColor(ev.author)}`}
+                                                                title={ev.author}
+                                                                aria-label={ev.author}
+                                                            >
+                                                                {ev.author?.[0]?.toUpperCase() || '?'}
+                                                            </div>
+                                                            <div className="flex-1 text-left">
+                                                                <div className="text-base-content font-medium line-clamp-1">{ev.author}</div>
+                                                                <div className="text-base-content/80 text-sm line-clamp-1">{getEventText(ev)}</div>
+                                                            </div>
+                                                            <div className="text-xs text-base-content/50 ml-2 whitespace-nowrap">{getRelativeTime(ev.timestamp)}</div>
+                                                            <span className={`ml-2 transition-transform ${isOpen ? 'rotate-90' : ''}`}>▶</span>
+                                                        </button>
+                                                        <div
+                                                            id={`event-panel-${ev.id ?? idx}`}
+                                                            className={`overflow-hidden transition-all duration-300 ${isOpen ? 'py-2 px-4' : 'max-h-0 p-0'}`}
+                                                            aria-hidden={!isOpen}
+                                                        >
+                                                            {isOpen && (
+                                                                <div>
+                                                                    <div className="text-base-content/80 whitespace-pre-line break-words mb-2">{getEventText(ev)}</div>
+                                                                    <div className="text-xs text-base-content/50">Event ID: {ev.id ?? idx}</div>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )
+                                            })
+                                    ) : (
+                                        <div className="text-base-content/60">No activity yet.</div>
+                                    )}
+                                    <div ref={activityEndRef} />
+                                </div>
+                            </section>
+                            {/* Tracking Plan Section */}
+                            <section className="bg-base-100 rounded-lg p-4 shadow flex flex-col max-h-[400px] overflow-y-auto">
                                 <TrackingPlanSection
                                     events={
-                                        hasTrackingPlan(session.state)
-                                            ? session.state?.tracking_plans
+                                        hasTrackingPlan(session?.state)
+                                            ? session?.state?.tracking_plans
                                             : []
                                     }
-                                    repoUrl={`https://github.com/${session.id}/blob/main/`}
+                                    repoUrl={selectedRepo.url + '/blob/main/'}
                                 />
-                            </div>
+                            </section>
                         </div>
                     </div>
                 ) : (

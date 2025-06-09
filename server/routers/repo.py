@@ -36,6 +36,7 @@ class RepoResponse(BaseModel):
     label: str | None = None
     description: str | None = None
     url: str | None = None
+    session_id: str | None = None
     created_at: datetime
 
 
@@ -150,17 +151,20 @@ def delete_repo(repo_id: str, db: Session = Depends(get_db)):
 @router.get("/repo/{repo_id}/plans", response_model=List[PlanResponse])
 def list_plans(repo_id: str, db: Session = Depends(get_db)):
     plans = db.query(Plan).filter(Plan.repo_id == repo_id).all()
-    return [PlanResponse(
-        id=str(p.id),
-        repo_id=str(p.repo_id),
-        name=p.name,
-        description=p.description or "",
-        status=p.status,
-        version=p.version,
-        import_source=p.import_source or "",
-        created_at=p.created_at,
-        updated_at=p.updated_at,
-    ) for p in plans]
+    return [
+        PlanResponse(
+            id=str(p.id),
+            repo_id=str(p.repo_id),
+            name=p.name,
+            description=p.description or "",
+            status=p.status,
+            version=p.version,
+            import_source=p.import_source or "",
+            created_at=p.created_at,
+            updated_at=p.updated_at,
+        )
+        for p in plans
+    ]
 
 
 @router.get("/plans/{plan_id}", response_model=PlanResponse)
@@ -235,21 +239,26 @@ def delete_plan(plan_id: str, db: Session = Depends(get_db)):
 @router.get("/plans/{plan_id}/events", response_model=List[UserEventResponse])
 def list_events_for_plan(plan_id: str, db: Session = Depends(get_db)):
     events = db.query(UserEvent).filter(UserEvent.plan_id == plan_id).all()
-    return [UserEventResponse(
-        id=str(e.id),
-        plan_id=str(e.plan_id),
-        repo_id=str(e.repo_id),
-        event_name=e.event_name,
-        context=e.context or "",
-        tags=e.tags or [],
-        file_path=e.file_path or "",
-        line_number=e.line_number or 0,
-        created_at=e.created_at,
-        updated_at=e.updated_at,
-    ) for e in events]
+    return [
+        UserEventResponse(
+            id=str(e.id),
+            plan_id=str(e.plan_id),
+            repo_id=str(e.repo_id),
+            event_name=e.event_name,
+            context=e.context or "",
+            tags=e.tags or [],
+            file_path=e.file_path or "",
+            line_number=e.line_number or 0,
+            created_at=e.created_at,
+            updated_at=e.updated_at,
+        )
+        for e in events
+    ]
 
 
-@router.post("/events", response_model=UserEventResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/events", response_model=UserEventResponse, status_code=status.HTTP_201_CREATED
+)
 def create_event(event: UserEventCreate, db: Session = Depends(get_db)):
     db_event = UserEvent(**event.dict())
     db.add(db_event)
@@ -307,13 +316,35 @@ def export_events_for_plan(plan_id: str, db: Session = Depends(get_db)):
     events = db.query(UserEvent).filter(UserEvent.plan_id == plan_id).all()
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow([
-        "id", "plan_id", "repo_id", "event_name", "context", "tags", "file_path", "line_number", "created_at", "updated_at"
-    ])
+    writer.writerow(
+        [
+            "id",
+            "plan_id",
+            "repo_id",
+            "event_name",
+            "context",
+            "tags",
+            "file_path",
+            "line_number",
+            "created_at",
+            "updated_at",
+        ]
+    )
     for e in events:
-        writer.writerow([
-            str(e.id), str(e.plan_id), str(e.repo_id), e.event_name, e.context or "", ",".join(e.tags or []), e.file_path or "", e.line_number or 0, e.created_at.isoformat(), e.updated_at.isoformat()
-        ])
+        writer.writerow(
+            [
+                str(e.id),
+                str(e.plan_id),
+                str(e.repo_id),
+                e.event_name,
+                e.context or "",
+                ",".join(e.tags or []),
+                e.file_path or "",
+                e.line_number or 0,
+                e.created_at.isoformat(),
+                e.updated_at.isoformat(),
+            ]
+        )
     output.seek(0)
     return StreamingResponse(
         output,
@@ -323,14 +354,18 @@ def export_events_for_plan(plan_id: str, db: Session = Depends(get_db)):
 
 
 @router.post("/plans/{plan_id}/events/import", response_model=List[UserEventResponse])
-def import_events_for_plan(plan_id: str, db: Session = Depends(get_db), file: bytes = None):
+def import_events_for_plan(
+    plan_id: str, db: Session = Depends(get_db), file: bytes = None
+):
     # This expects a CSV file upload via form-data with key 'file'
     import fastapi
     from fastapi import UploadFile, File as FastAPIFile
     import csv
     from uuid import uuid4
+
     class DummyRequest:
         pass
+
     request = DummyRequest()
     request.file = file
     # In real FastAPI, use: file: UploadFile = FastAPIFile(...)

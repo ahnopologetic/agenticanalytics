@@ -16,7 +16,7 @@ const TrackingPlanSection = ({ events, repoUrl }: { events: TrackingPlanEvent[],
         e.file_path.toLowerCase().includes(search.toLowerCase())
     )
     return (
-        <section className="mt-8">
+        <>
             <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                     <h3 className="font-semibold text-lg">Tracking Plan</h3>
@@ -120,7 +120,7 @@ const TrackingPlanSection = ({ events, repoUrl }: { events: TrackingPlanEvent[],
                     )
                 })}
             </div>
-        </section>
+        </>
     )
 }
 

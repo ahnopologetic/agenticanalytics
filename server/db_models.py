@@ -1,4 +1,5 @@
 from sqlalchemy import (
+    JSON,
     Column,
     String,
     Text,
@@ -7,6 +8,7 @@ from sqlalchemy import (
     DateTime,
     BigInteger,
     ARRAY,
+    UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import declarative_base, relationship
@@ -40,6 +42,7 @@ class Repo(Base):
     label = Column(String)
     description = Column(Text)
     url = Column(String)
+    session_id = Column(String, ForeignKey("sessions.id", ondelete="CASCADE"))
     created_at = Column(DateTime, default=utcnow)
     updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
 
@@ -109,3 +112,15 @@ class EventAnnotation(Base):
     updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
 
     event = relationship("UserEvent", back_populates="annotations")
+
+
+class AdkSession(Base):
+    __tablename__ = "sessions"
+    app_name = Column(String(128), primary_key=True)
+    user_id = Column(String(128), primary_key=True)
+    id = Column(String(128), primary_key=True, unique=True)
+    state = Column(JSON)
+    created_at = Column(DateTime, nullable=False)
+    updated_at = Column(DateTime, nullable=False)
+
+    __table_args__ = (UniqueConstraint("id", name="sessions_id_key"),)

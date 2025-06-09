@@ -2,6 +2,7 @@ from typing import Any, Optional
 import uuid
 from google.adk.agents import Agent
 from google.adk.runners import Runner
+from google.adk.sessions.session import Session
 from google.adk.artifacts import InMemoryArtifactService, GcsArtifactService
 from google.adk.sessions import InMemorySessionService, DatabaseSessionService
 from google.genai import types as adk_types
@@ -91,8 +92,14 @@ class MainAgentTaskManager:
                 if not event.content.parts or not event.content.parts[0].text:
                     continue
                 final_message = event.content.parts[0].text
-                logger.info("final message", session_id=session.id, final_message=final_message)
-                await self.session_service.append_event(session, event)
+                logger.info(
+                    "final message", session_id=session.id, final_message=final_message
+                )
+                try:
+                    await self.session_service.append_event(session, event)
+                except ValueError as e:
+                    logger.error("Error appending event", error=e)
+                    continue
 
         return {
             "message": final_message,
@@ -110,6 +117,20 @@ class MainAgentTaskManager:
     async def list_sessions(self, user_id: str):
         return await self.runner.session_service.list_sessions(
             app_name=self.app_name, user_id=user_id
+        )
+
+    async def create_session(
+        self, context: dict[str, Any], session_id: Optional[str] = None
+    ) -> Session:
+        return await self.runner.session_service.create_session(
+            app_name=self.app_name,
+            user_id=context.get("user_id", "default_user_id"),
+            session_id=session_id,
+            state={
+                "status": "not_started",
+                "user_id": context.get("user_id", "default_user_id"),
+                "session_id": session_id,
+            },
         )
 
 
