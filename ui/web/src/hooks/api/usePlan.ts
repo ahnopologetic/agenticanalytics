@@ -120,7 +120,7 @@ export const useDeletePlanEvent = () => {
   
   return useMutation({
     mutationFn: (eventId: string) => PlanService.deletePlanEvent(eventId),
-    onSuccess: (_, eventId) => {
+    onSuccess: () => {
       // Since we don't know the plan_id from the response, we invalidate all plan events queries
       queryClient.invalidateQueries({ 
         queryKey: ['plan'],

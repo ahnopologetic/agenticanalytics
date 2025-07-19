@@ -60,7 +60,7 @@ export const useDeleteTrackingPlanEvent = () => {
 
     return useMutation({
         mutationFn: (eventId: string) => RepoService.deleteTrackingPlanEvent(eventId),
-        onSuccess: (_, eventId) => {
+        onSuccess: () => {
             // Since we don't know the repo_id from the response, we invalidate all events queries
             queryClient.invalidateQueries({
                 queryKey: ['repo'],
