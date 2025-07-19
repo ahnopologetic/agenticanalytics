@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { talkToAgent, API_BASE_URL } from '../../api'
+import { talkToAgent } from '../../api'
 import { useUserContext } from '../../hooks/use-user-context'
 import ConnectGitHubStep from './github-connect/ConnectGitHubStep'
 import LabelReposStep from './github-connect/LabelReposStep'
 import StartIndexingStep from './github-connect/StartIndexingStep'
+import { useGithubSessionRepos } from '../../hooks/api/useGithub'
+import { API_BASE_URL } from '../../lib/axios'
 
 type Repo = { id: number; name: string }
 type Owner = { type: 'user' | 'org'; login: string; avatar_url: string; repos: { id: number; full_name: string }[] }
@@ -26,38 +28,47 @@ const GitHubConnect = () => {
   const [connected, setConnected] = useState(false)
   const [isIndexing, setIsIndexing] = useState(false)
   const [indexingStarted, setIndexingStarted] = useState(false)
-  const [loadingRepos, setLoadingRepos] = useState(false)
+  // const [loadingRepos, setLoadingRepos] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [repoFilter, setRepoFilter] = useState('')
   const [lastCheckedRepoId, setLastCheckedRepoId] = useState<number | null>(null)
   const navigate = useNavigate()
   const { user } = useUserContext()
 
-  // Check for session_id in URL (after OAuth)
+  // Get session_id from URL
+  const [sessionId, setSessionId] = useState<string | null>(null)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const session_id = params.get('session_id')
     if (session_id) {
-      setLoadingRepos(true)
-      fetch(`${API_BASE_URL}/auth/github/repos?session_id=${encodeURIComponent(session_id)}`, { credentials: 'include' })
-        .then(async (res) => {
-          if (!res.ok) throw new Error('Failed to fetch repositories from GitHub.')
-          return res.json()
-        })
-        .then((data) => {
-          setOwners(data.owners || [])
-          if (data.owners && data.owners.length > 0) {
-            setSelectedOwner(data.owners[0].login)
-            setStep(2)
-            setConnected(true)
-          }
-        })
-        .catch((err) => {
-          setError(err.message)
-        })
-        .finally(() => setLoadingRepos(false))
+      setSessionId(session_id)
     }
   }, [])
+
+  // Use React Query to fetch repositories
+  const {
+    data: reposData,
+    isLoading: isLoadingRepos,
+    isError: isReposError,
+    error: reposError
+  } = useGithubSessionRepos(sessionId)
+
+  // Update state when repositories are loaded
+  useEffect(() => {
+    if (reposData?.owners && reposData.owners.length > 0) {
+      setOwners(reposData.owners as Owner[])
+      setSelectedOwner(reposData.owners[0].login)
+      setStep(2)
+      setConnected(true)
+    }
+  }, [reposData])
+
+  // Set error if repositories failed to load
+  useEffect(() => {
+    if (isReposError && reposError) {
+      setError(reposError instanceof Error ? reposError.message : 'Failed to fetch repositories from GitHub.')
+    }
+  }, [isReposError, reposError])
 
   if (!user || user.id === null) {
     navigate('/login')
@@ -175,7 +186,7 @@ const GitHubConnect = () => {
         <ConnectGitHubStep onConnect={handleConnectGitHub} />
       )}
       {step === 2 && connected && (
-        loadingRepos ? (
+        isLoadingRepos ? (
           <div className="skeleton h-32 w-96">Loading repositories...</div>
         ) : (
           <div className="w-full max-w-lg bg-white rounded shadow p-6">

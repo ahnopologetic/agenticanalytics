@@ -10,6 +10,15 @@ export const useGithubRepos = () => {
     });
 };
 
+// Hook for fetching GitHub repositories using a session_id
+export const useGithubSessionRepos = (sessionId: string | null) => {
+    return useQuery({
+        queryKey: ['github', 'repos', sessionId],
+        queryFn: () => GithubService.getReposBySessionId(sessionId!),
+        enabled: !!sessionId,
+    });
+};
+
 // Hook for fetching GitHub repository info
 export const useGithubRepoInfo = (repoFullName: string, enabled = true) => {
     return useQuery({

@@ -31,6 +31,14 @@ export class GithubService {
         });
     }
 
+    static getReposBySessionId(sessionId: string): Promise<{ owners: Array<{ login: string, type: string, avatar_url: string, repos: Array<{ id: number, full_name: string }> }> }> {
+        return createAPIRequest({
+            method: 'GET',
+            url: `/auth/github/repos`,
+            params: { session_id: sessionId }
+        });
+    }
+
     static cloneRepo(payload: CloneRepoPayload): Promise<unknown> {
         return createAPIRequest({
             method: 'POST',

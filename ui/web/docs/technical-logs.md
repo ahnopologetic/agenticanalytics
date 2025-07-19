@@ -1,57 +1,28 @@
 # Technical Logs
 
-## 2025-07-19: React Query with Axios Implementation
+### 2023-06-15
+- Initial setup of the project with Vite, React, TypeScript, and TailwindCSS
+- Added basic authentication with Supabase
+- Created basic layout and navigation
 
-Implemented a scalable and type-safe React Query setup with Axios for handling multiple REST APIs. The implementation follows a layered architecture:
+### 2023-06-20
+- Implemented GitHub OAuth integration
+- Added GitHub repository listing and selection
+- Created tracking plan view
 
-### Architecture Overview
+### 2023-07-05
+- Added React Query for data fetching
+- Implemented API service layer for better organization
+- Created custom hooks for API calls
 
-1. **Axios Client Layer** (`lib/axios.ts`)
-   - Created a base Axios instance with interceptors for authentication and error handling
-   - Implemented automatic token injection from Supabase auth
-   - Added error handling for common HTTP errors (401, etc.)
+### 2023-07-10
+- Enhanced tracking plan UI with better visualization
+- Added export/import functionality for tracking plans
+- Improved error handling and loading states
 
-2. **API Service Layer** (`services/api.service.ts`)
-   - Organized API endpoints into service classes (GithubService, AgentService, RepoService, PlanService)
-   - Each service provides type-safe methods for interacting with the API
-   - Implemented proper error handling and response typing
-
-3. **React Query Hooks Layer** (`hooks/api/*`)
-   - Created custom hooks for each API endpoint
-   - Implemented proper query invalidation for mutations
-   - Added support for dependent queries with the `enabled` option
-   - Structured query keys hierarchically for efficient cache management
-
-4. **Type Definitions** (`types/api.ts`)
-   - Defined comprehensive TypeScript interfaces for all API requests and responses
-   - Re-exported existing types from the old API module for backward compatibility
-   - Added generic response types for consistent error handling
-
-### Key Improvements
-
-- **Performance Optimization**: Configured React Query with appropriate stale times and garbage collection
-- **Type Safety**: All API calls and responses are fully typed
-- **Error Handling**: Comprehensive error handling at multiple levels
-- **Caching**: Efficient caching strategy with proper invalidation
-- **Code Organization**: Clear separation of concerns between layers
-- **Scalability**: Easy to add new API endpoints following the established pattern
-- **Developer Experience**: Simplified API usage in components with custom hooks
-
-### Example Component
-
-Created a `RepoList` component to demonstrate the usage of React Query hooks:
-- Shows how to fetch data with `useRepos` and `useTrackingPlanEvents`
-- Demonstrates how to use mutations with `useCloneGithubRepo`
-- Implements loading and error states
-- Shows how to handle dependent queries
-
-### Documentation
-
-Added comprehensive documentation in `docs/react-query-setup.md` explaining:
-- The overall architecture
-- How to use the hooks for data fetching and mutations
-- The caching strategy
-- Error handling approach
-- How to add new API endpoints
-
-This implementation provides a solid foundation for handling API calls in the application, with improved performance, type safety, and developer experience.
+### 2023-09-15
+- Refactored GitHub connection flow
+- Implemented React Query for GitHub repositories fetching
+- Modified GitHubConnect component to skip to step 2 when repositories are available
+- Added session-based repository fetching to maintain state after OAuth redirect
+- Improved error handling for API requests
