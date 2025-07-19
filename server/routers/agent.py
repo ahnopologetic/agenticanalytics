@@ -40,7 +40,6 @@ class AgentResponse(BaseModel):
 async def get_current_user_id(
     authorization: Optional[str] = Depends(lambda: None),
 ) -> str:
-    from fastapi import Header
     from supabase import Client, create_client
     from config import config
 

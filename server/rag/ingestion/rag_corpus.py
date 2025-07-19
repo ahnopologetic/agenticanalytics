@@ -2,13 +2,13 @@ import argparse
 import tempfile
 import uuid
 from pathlib import Path
-from typing import Any, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 import git
 import vertexai
 from rag.ingestion.config import config
 from logger import structlog
-from google.cloud import aiplatform_v1beta1, storage
+from google.cloud import storage
 from google.cloud.aiplatform_v1.types.vertex_rag_data_service import (
     ImportRagFilesResponse,
 )
@@ -20,7 +20,6 @@ from vertexai.preview.rag.rag_data import (
 from vertexai.preview.rag.utils.resources import (
     ChunkingConfig,
     EmbeddingModelConfig,
-    RagResource,
 )
 
 logger = structlog.get_logger()

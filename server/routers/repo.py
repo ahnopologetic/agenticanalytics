@@ -379,12 +379,7 @@ def import_events_for_plan(
     plan_id: str, db: Session = Depends(get_db), file: bytes = None
 ):
     # This expects a CSV file upload via form-data with key 'file'
-    import csv
-    from uuid import uuid4
 
-    import fastapi
-    from fastapi import File as FastAPIFile
-    from fastapi import UploadFile
 
     class DummyRequest:
         pass

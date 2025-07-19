@@ -1,7 +1,6 @@
 import os
 from pathlib import Path
 import shutil
-import uuid
 import zipfile
 
 import google.genai.types as types

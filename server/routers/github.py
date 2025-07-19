@@ -2,9 +2,7 @@ from pathlib import Path
 from typing import List
 
 import httpx
-from config import config
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from structlog import get_logger
 from sqlalchemy.orm import Session
@@ -100,7 +98,7 @@ async def clone_github_repo(
     if not profile or not getattr(profile, "github_token", None):
         logger.error("GitHub token not found for user.", user_id=user.id)
         raise HTTPException(status_code=404, detail="GitHub token not found for user.")
-    github_token = profile.github_token
+    # github_token = profile.github_token
     # TODO: Implement cloning logic
     return {"success": True, "repo": request.repo_name}
 
