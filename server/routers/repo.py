@@ -4,7 +4,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List, Optional
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+from gotrue.types import User
 from db_models import Repo, UserEvent, Plan
+from server.routers.deps import get_current_user
 from utils.db_session import get_db
 from fastapi.responses import StreamingResponse
 import io
@@ -101,8 +103,12 @@ class UserEventResponse(BaseModel):
 
 
 @router.post("/", response_model=RepoResponse, status_code=status.HTTP_201_CREATED)
-def create_repo(repo: RepoCreate, db: Session = Depends(get_db)):
-    db_repo = Repo(**repo.dict())
+def create_repo(
+    repo: RepoCreate,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    db_repo = Repo(**repo.model_dump(), user_id=user.id)
     db.add(db_repo)
     db.commit()
     db.refresh(db_repo)
@@ -110,22 +116,36 @@ def create_repo(repo: RepoCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/", response_model=List[RepoResponse])
-def get_repos(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    repos = db.query(Repo).offset(skip).limit(limit).all()
+def get_repos(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    repos = (
+        db.query(Repo).filter(Repo.user_id == user.id).offset(skip).limit(limit).all()
+    )
     return repos
 
 
 @router.get("/{repo_id}", response_model=RepoResponse)
-def get_repo(repo_id: str, db: Session = Depends(get_db)):
-    repo = db.query(Repo).filter(Repo.id == repo_id).first()
+def get_repo(
+    repo_id: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)
+):
+    repo = db.query(Repo).filter(Repo.id == repo_id, Repo.user_id == user.id).first()
     if repo is None:
         raise HTTPException(status_code=404, detail="Repo not found")
     return repo
 
 
 @router.put("/{repo_id}", response_model=RepoResponse)
-def update_repo(repo_id: str, repo: RepoUpdate, db: Session = Depends(get_db)):
-    db_repo = db.query(Repo).filter(Repo.id == repo_id).first()
+def update_repo(
+    repo_id: str,
+    repo: RepoUpdate,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    db_repo = db.query(Repo).filter(Repo.id == repo_id, Repo.user_id == user.id).first()
     if db_repo is None:
         raise HTTPException(status_code=404, detail="Repo not found")
 
