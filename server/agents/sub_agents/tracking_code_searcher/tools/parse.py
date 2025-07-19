@@ -52,32 +52,34 @@ def parse_tracking_code(input_file: str, output_csv: str) -> None:
 
             # Try to parse flat JS/Python-style objects: {key: value, ...} or {"key": value, ...}
             # This is a best-effort and will not handle nested/complex objects.
-            prop_pattern = re.compile(r'([\w\'\"]+)\s*:\s*([\w\'\"\.\-\[\]\{\}\(\)]+)')
+            prop_pattern = re.compile(r"([\w\'\"]+)\s*:\s*([\w\'\"\.\-\[\]\{\}\(\)]+)")
             # Remove wrapping braces if present
             prop_str = properties_str.strip()
             if prop_str.startswith("{") and prop_str.endswith("}"):
                 prop_str = prop_str[1:-1]
             parsed_any = False
             for m in prop_pattern.finditer(prop_str):
-                key = m.group(1).strip('"\'')
+                key = m.group(1).strip("\"'")
                 value = m.group(2).strip()
                 # Infer type
                 if value.startswith('"') or value.startswith("'"):
                     prop_type = "string"
                 elif value in ["true", "false", "True", "False"]:
                     prop_type = "bool"
-                elif re.match(r'^-?\d+(\.\d+)?$', value):
+                elif re.match(r"^-?\d+(\.\d+)?$", value):
                     prop_type = "number"
                 else:
                     prop_type = "unknown"
-                writer.writerow([
-                    event_name,
-                    key,
-                    "N/A",  # No description available
-                    prop_type,
-                    filepath,
-                    full_code_context,
-                ])
+                writer.writerow(
+                    [
+                        event_name,
+                        key,
+                        "N/A",  # No description available
+                        prop_type,
+                        filepath,
+                        full_code_context,
+                    ]
+                )
                 parsed_any = True
             if not parsed_any:
                 # Fallback: could not parse properties

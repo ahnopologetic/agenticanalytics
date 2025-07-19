@@ -1,11 +1,12 @@
-from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from gotrue.types import User
 from config import config
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from gotrue.types import User
 from supabase import Client, create_client
 
 supabase: Client = create_client(config.supabase_url, config.supabase_service_role_key)
 http_bearer = HTTPBearer()
+
 
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(http_bearer),
@@ -22,4 +23,4 @@ def get_current_user(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Supabase token."
         )
-    return user 
+    return user
