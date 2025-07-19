@@ -1,16 +1,17 @@
-from datetime import datetime
-from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, status
-from typing import List, Optional
-from pydantic import BaseModel
-from sqlalchemy.orm import Session
-from gotrue.types import User
-from db_models import Repo, UserEvent, Plan
-from server.routers.deps import get_current_user
-from utils.db_session import get_db
-from fastapi.responses import StreamingResponse
-import io
 import csv
+import io
+from datetime import datetime
+from typing import List, Optional
+from uuid import UUID
+
+from db_models import Plan, Repo, UserEvent
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse
+from gotrue.types import User
+from pydantic import BaseModel
+from routers.deps import get_current_user
+from sqlalchemy.orm import Session
+from utils.db_session import get_db
 
 router = APIRouter(tags=["repo"])
 
@@ -378,10 +379,7 @@ def import_events_for_plan(
     plan_id: str, db: Session = Depends(get_db), file: bytes = None
 ):
     # This expects a CSV file upload via form-data with key 'file'
-    import fastapi
-    from fastapi import UploadFile, File as FastAPIFile
-    import csv
-    from uuid import uuid4
+
 
     class DummyRequest:
         pass

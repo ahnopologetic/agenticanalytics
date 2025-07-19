@@ -2,7 +2,6 @@ import structlog
 from db_models import Repo
 from google.adk.agents import LlmAgent
 from google.adk.tools.tool_context import ToolContext
-from pydantic import Field
 from utils.db_session import get_db
 from utils.github import aclone_repository
 

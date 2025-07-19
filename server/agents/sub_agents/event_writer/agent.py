@@ -1,5 +1,5 @@
 import json
-from google.adk.agents import LlmAgent, SequentialAgent
+from google.adk.agents import LlmAgent
 from google.adk.tools.tool_context import ToolContext
 import structlog
 
@@ -25,7 +25,7 @@ async def read_analyze_tracking_yaml(
     outputs = []
 
     for pattern in patterns:
-        calling_pattern = pattern["pattern"]
+        # calling_pattern = pattern["pattern"]
         output_file = pattern["output_file"]
 
         try:

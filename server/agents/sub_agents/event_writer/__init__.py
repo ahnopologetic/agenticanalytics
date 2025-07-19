@@ -1,3 +1,1 @@
-from .agent import event_writer
-
-
+from .agent import event_writer  # noqa
