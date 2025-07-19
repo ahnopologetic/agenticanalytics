@@ -33,7 +33,7 @@ async def github_oauth_login(response: Response):
     state = secrets.token_urlsafe(16)
     params = {
         "client_id": config.github_oauth_client_id,
-        "scope": "read:org",
+        "scope": "repo read:org",
         "redirect_uri": f"{config.base_url}/auth/github/callback",
         "state": state,
         "allow_signup": "false",
