@@ -5,6 +5,7 @@ import Navbar from './components/ui/Navbar'
 import GithubCallback from './components/ui/GithubCallback'
 import Home from './components/ui/Home'
 import TrackingPlan from './components/ui/TrackingPlan'
+import RepoList from './components/ui/RepoList'
 
 const App = () => (
   <Router>
@@ -15,6 +16,7 @@ const App = () => (
       <Route path="/github-callback" element={<GithubCallback />} />
       <Route path="/home" element={<Home />} />
       <Route path="/tracking-plan" element={<TrackingPlan />} />
+      <Route path="/repos" element={<RepoList />} />
       <Route path="*" element={<Login />} />
     </Routes>
   </Router>
