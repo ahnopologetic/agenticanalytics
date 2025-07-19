@@ -75,14 +75,14 @@ async def get_installation_token() -> str:
 
 
 async def aclone_repository(
-    tool_context: ToolContext, repo_name: str, branch: str = "main"
+    tool_context: ToolContext, repo_name: str, branch: str = None
 ) -> str:
     """
     Clone a GitHub repository and return the path to the cloned repository.
 
     Args:
         repo_name: str - the name of the repository to clone (e.g. "facebook/react", "facebook/react-native")
-        branch: str - the name of the branch to clone (defaults to "main")
+        branch: str - the name of the branch to clone (defaults to repository's default branch)
 
     Returns:
         str - the path to the cloned repository
@@ -106,15 +106,18 @@ async def aclone_repository(
     repo_url = f"https://x-access-token:{installation_token}@github.com/{repo_name}.git"
 
     try:
-        # Clone the repository with specific branch
-        repo = Repo.clone_from(repo_url, temp_dir, branch=branch)
+        # Clone the repository with specific branch if provided, otherwise use default branch
+        if branch:
+            repo = Repo.clone_from(repo_url, temp_dir, branch=branch)
+        else:
+            repo = Repo.clone_from(repo_url, temp_dir)
         repo_path = repo.working_dir
     except git.GitCommandError as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to clone repository: {str(e)}"
         )
 
-    logger.info("Cloned repository", repo_path=repo_path, branch=branch)
+    logger.info("Cloned repository", repo_path=repo_path, branch=branch or "default")
     tool_context.state["git_repository_path"] = repo_path
     tool_context.state["status"] = "cloned"
     return repo_path

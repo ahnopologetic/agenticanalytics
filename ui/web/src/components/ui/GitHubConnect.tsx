@@ -5,7 +5,7 @@ import { useUserContext } from '../../hooks/use-user-context'
 import ConnectGitHubStep from './github-connect/ConnectGitHubStep'
 import LabelReposStep from './github-connect/LabelReposStep'
 import StartIndexingStep from './github-connect/StartIndexingStep'
-import { useGithubSessionRepos } from '../../hooks/api/useGithub'
+import { useGithubSessionRepos } from '../../hooks/use-github'
 import { API_BASE_URL } from '../../lib/axios'
 
 type Repo = { id: number; name: string }
