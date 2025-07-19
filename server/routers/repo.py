@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from gotrue.types import User
 from db_models import Repo, UserEvent, Plan
-from server.routers.deps import get_current_user
+from routers.deps import get_current_user
 from utils.db_session import get_db
 from fastapi.responses import StreamingResponse
 import io
