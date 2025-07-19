@@ -26,3 +26,13 @@
 - Modified GitHubConnect component to skip to step 2 when repositories are available
 - Added session-based repository fetching to maintain state after OAuth redirect
 - Improved error handling for API requests
+
+### 2023-09-20
+- Refactored React Query implementation to use custom hooks
+- Created domain-specific hooks for better organization and scalability
+- Implemented consistent error handling and typing across all API calls
+- Simplified component code by abstracting away React Query implementation details
+- Added comprehensive documentation for the new hook-based approach
+- Created centralized hooks index for easier imports
+- Improved type safety with explicit type annotations
+- Enhanced developer experience with simpler API for data fetching and mutations

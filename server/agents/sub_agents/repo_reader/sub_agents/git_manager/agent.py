@@ -48,14 +48,14 @@ git_manager_agent = LlmAgent(
     model="gemini-2.0-flash",
     description="Manage the git repository.",
     instruction="""
-    Given the repository url, clone the repository using the aclone_repository tool.
+    Given the repository url, first save the repository to the database and then clone the repository.
     
     Example
     User Input: https://github.com/UnlyEd/next-right-now/tree/master
-    1. Function Call: aclone_repository(repo_name="UnlyEd/next-right-now", branch="master")
+    1. Function Call: save_repo_to_db(repo_name="UnlyEd/next-right-now", branch="master")
+    Reason: Save the repository to the database first.
+    2. Function Call: aclone_repository(repo_name="UnlyEd/next-right-now", branch="master")
     Reason: The repository name is the part of the URL that identifies the repository, e.g., "facebook/react" or "UnlyEd/next-right-now". From the given URL, the repository name is "UnlyEd/next-right-now". Also, the branch is master.
-    2. Function Call: save_repo_to_db(repo_name="UnlyEd/next-right-now", branch="master")
-    Reason: Save the repository to the database.
     """,
     tools=[aclone_repository, save_repo_to_db],
 )

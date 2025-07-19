@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useRepos, useTrackingPlanEvents, useCloneGithubRepo } from '../../hooks/api';
+import { useRepos, useTrackingPlanEvents, useCloneGithubRepo } from '../../hooks';
 
 const RepoList = () => {
   const [selectedRepoId, setSelectedRepoId] = useState<string>('');

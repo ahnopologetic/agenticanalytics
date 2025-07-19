@@ -1,6 +1,6 @@
-# React Query with Axios Implementation
+# React Query with Custom Hooks Implementation
 
-This document outlines the implementation of React Query with Axios for handling API calls in the application.
+This document outlines the implementation of React Query with Axios for handling API calls in the application, using custom hooks for simplicity and scalability.
 
 ## Architecture
 
@@ -8,23 +8,28 @@ The implementation follows a layered architecture:
 
 1. **Axios Client Layer** (`lib/axios.ts`): Base configuration for Axios with interceptors for authentication and error handling.
 2. **API Service Layer** (`services/api.service.ts`): Service classes that use the Axios client to make API calls.
-3. **React Query Hooks Layer** (`hooks/api/*`): Custom hooks that use React Query to manage data fetching, caching, and mutations.
-4. **Component Layer**: React components that use the hooks to display data and handle user interactions.
+3. **API Wrapper Layer** (`hooks/use-api.ts`): Wrappers around React Query hooks for consistent error handling and typing.
+4. **Domain-Specific Hooks Layer** (`hooks/use-*.ts`): Custom hooks for specific domains that abstract away React Query implementation details.
+5. **Component Layer**: React components that use the domain-specific hooks to display data and handle user interactions.
 
 ## Key Files
 
 - `lib/axios.ts`: Axios instance with interceptors
 - `types/api.ts`: TypeScript interfaces for API requests and responses
 - `services/api.service.ts`: Service classes for different API endpoints
-- `hooks/api/*.ts`: React Query hooks for data fetching and mutations
-- `hooks/api/index.ts`: Entry point for all API hooks
+- `hooks/use-api.ts`: Wrapper functions for React Query hooks
+- `hooks/use-github.ts`: GitHub-specific hooks
+- `hooks/use-agent.ts`: Agent-specific hooks
+- `hooks/use-repo.ts`: Repository-specific hooks
+- `hooks/use-plan.ts`: Plan-specific hooks
+- `hooks/index.ts`: Entry point for all hooks
 
 ## Usage
 
 ### Fetching Data
 
 ```tsx
-import { useRepos } from '../hooks/api';
+import { useRepos } from '../hooks';
 
 const MyComponent = () => {
   const { data, isLoading, error } = useRepos();
@@ -45,7 +50,7 @@ const MyComponent = () => {
 ### Mutations
 
 ```tsx
-import { useCreateTrackingPlanEvent } from '../hooks/api';
+import { useCreateTrackingPlanEvent } from '../hooks';
 
 const MyForm = () => {
   const { mutate, isPending } = useCreateTrackingPlanEvent();
@@ -75,6 +80,26 @@ const MyForm = () => {
 };
 ```
 
+## API Wrapper Functions
+
+The `use-api.ts` file provides wrapper functions for React Query hooks:
+
+- `useApiQuery`: Wrapper for `useQuery` with consistent error handling and typing
+- `useApiMutation`: Wrapper for `useMutation` with consistent error handling and typing
+
+These wrappers provide a consistent interface for all API calls and handle common error cases.
+
+## Domain-Specific Hooks
+
+The domain-specific hooks are organized by feature:
+
+- **GitHub Hooks** (`use-github.ts`): Hooks for GitHub-related features
+- **Agent Hooks** (`use-agent.ts`): Hooks for agent-related features
+- **Repository Hooks** (`use-repo.ts`): Hooks for repository-related features
+- **Plan Hooks** (`use-plan.ts`): Hooks for plan-related features
+
+Each hook file provides a set of functions for interacting with the API, abstracting away the implementation details of React Query.
+
 ## React Query Configuration
 
 The React Query client is configured in `main.tsx` with the following options:
@@ -85,30 +110,22 @@ The React Query client is configured in `main.tsx` with the following options:
 - **refetchOnWindowFocus**: Only in production (data is refetched when the window regains focus)
 - **refetchOnMount**: true (data is refetched when a component mounts)
 
-## API Services
-
-The API services are organized into the following classes:
-
-- **GithubService**: GitHub-related endpoints
-- **AgentService**: Agent-related endpoints
-- **RepoService**: Repository-related endpoints
-- **PlanService**: Plan-related endpoints
-
-Each service class provides static methods for interacting with the API.
-
 ## Error Handling
 
 Errors are handled at multiple levels:
 
 1. **Axios Interceptors**: Global error handling for all API calls
 2. **Service Layer**: Specific error handling for each API call
-3. **React Query Hooks**: Error state management for components
+3. **API Wrapper Layer**: Consistent error typing and handling
+4. **Domain-Specific Hooks**: Feature-specific error handling
+5. **Component Layer**: UI-specific error handling and display
 
 ## Caching Strategy
 
 React Query handles caching automatically based on query keys. The query keys are structured hierarchically:
 
 - `['github', 'repos']`: GitHub repositories
+- `['github', 'repos', sessionId]`: GitHub repositories for a specific session
 - `['github', 'repo-info', repoFullName]`: GitHub repository info
 - `['repo', 'list']`: List of repositories
 - `['repo', repoId, 'events']`: Tracking plan events for a specific repository
@@ -122,5 +139,15 @@ To add a new API endpoint:
 
 1. Add the appropriate types to `types/api.ts`
 2. Add the API call to the relevant service class in `services/api.service.ts`
-3. Create a new hook in the appropriate file in `hooks/api/`
-4. Export the hook from `hooks/api/index.ts` 
+3. Create a new hook in the appropriate file in `hooks/use-*.ts`
+4. Export the hook from `hooks/index.ts`
+
+## Benefits of This Approach
+
+- **Simplicity**: Components only need to import from a single location (`hooks`)
+- **Scalability**: Easy to add new hooks without changing existing code
+- **Maintainability**: Clear separation of concerns between layers
+- **Type Safety**: All API calls and responses are fully typed
+- **Consistency**: Consistent error handling and caching strategy
+- **Testability**: Easy to mock hooks for testing
+- **Developer Experience**: Simplified API usage in components 
