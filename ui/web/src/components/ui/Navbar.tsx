@@ -4,35 +4,18 @@ import { useCallback, useEffect, useState } from 'react'
 import { getUserSessionList } from '../../api'
 import { useUserContext } from '../../hooks/use-user-context'
 
+import useUserSessions from '../../hooks/use-user-sessions'
+
 const Navbar = () => {
   const navigate = useNavigate()
-  const [hasLoggedIn, setHasLoggedIn] = useState(false)
   const { user } = useUserContext()
-  useEffect(() => {
-    const checkLoggedIn = async () => {
-      const { data, error } = await supabase.auth.getSession()
-      if (error) {
-        console.error(error)
-        setHasLoggedIn(false)
-        return
-      }
-      setHasLoggedIn(data.session !== null)
-    }
+  // Use the custom hook to fetch user sessions
+  const userId = user?.id ?? ''
+  const { data: sessionsData, isLoading: isSessionsLoading } = useUserSessions(userId)
 
-    const hasSesssions = async () => {
-      if (!user) {
-        setHasLoggedIn(false)
-        return
-      }
-      const res = await getUserSessionList()
-      if (res.sessions && res.sessions.length > 0) {
-        setHasLoggedIn(true)
-      }
-    }
+  // Determine if the user is logged in and has sessions
+  const hasLoggedIn = !!user && !!sessionsData && Array.isArray(sessionsData.sessions) && sessionsData.sessions.length > 0
 
-    checkLoggedIn()
-    hasSesssions()
-  }, [user])
   const handleLogout = useCallback(async () => {
     await supabase.auth.signOut()
     navigate('/login', { replace: true })
@@ -44,7 +27,9 @@ const Navbar = () => {
         <Link to="/" className="btn btn-ghost normal-case text-xl" tabIndex={0} aria-label="Agentic Analytics Home">Agentic Analytics</Link>
       </div>
       <div className="flex-none gap-2">
-        {hasLoggedIn ? (
+        {isSessionsLoading ? (
+          <span className="loading loading-spinner loading-sm"></span>
+        ) : hasLoggedIn ? (
           <>
             <Link to="/github-connect" className="btn btn-ghost" tabIndex={0} aria-label="Connect GitHub">Connect GitHub</Link>
             <Link to="/tracking-plan" className="btn btn-ghost" tabIndex={0} aria-label="Tracking Plan">Tracking Plan</Link>

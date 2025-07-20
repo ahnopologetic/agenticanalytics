@@ -5,7 +5,7 @@ import { useUserContext } from '../../hooks/use-user-context'
 import ConnectGitHubStep from './github-connect/ConnectGitHubStep'
 import LabelReposStep from './github-connect/LabelReposStep'
 import StartIndexingStep from './github-connect/StartIndexingStep'
-import { useGithubSessionRepos } from '../../hooks/use-github'
+import { useGithubRepos } from '../../hooks/use-github'
 import { API_BASE_URL } from '../../lib/axios'
 
 type Repo = { id: number; name: string }
@@ -35,29 +35,23 @@ const GitHubConnect = () => {
   const navigate = useNavigate()
   const { user } = useUserContext()
 
-  // Get session_id from URL
-  const [sessionId, setSessionId] = useState<string | null>(null)
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const session_id = params.get('session_id')
-    if (session_id) {
-      setSessionId(session_id)
-    }
-  }, [])
-
-  // Use React Query to fetch repositories
-  const {
-    data: reposData,
-    isLoading: isLoadingRepos,
-    isError: isReposError,
-    error: reposError
-  } = useGithubSessionRepos(sessionId)
+  const { data: reposData, isLoading: isLoadingRepos, isError: isReposError, error: reposError } = useGithubRepos()
 
   // Update state when repositories are loaded
   useEffect(() => {
-    if (reposData?.owners && reposData.owners.length > 0) {
-      setOwners(reposData.owners as Owner[])
-      setSelectedOwner(reposData.owners[0].login)
+    if (reposData && reposData.length > 0) {
+      setOwners(
+        reposData.reduce((acc, repo) => {
+          const owner = acc.find(o => o.login === repo.owner.login)
+          if (owner) {
+            owner.repos.push({ id: repo.id, full_name: repo.full_name })
+          } else {
+            acc.push({ type: repo.owner.type as 'user' | 'org', login: repo.owner.login, avatar_url: repo.owner.avatar_url, repos: [{ id: repo.id, full_name: repo.full_name }] })
+          }
+          return acc
+        }, [] as Owner[])
+      )
+      setSelectedOwner(reposData[0].owner.login)
       setStep(2)
       setConnected(true)
     }
@@ -183,11 +177,23 @@ const GitHubConnect = () => {
       <h1 className="text-2xl font-bold mb-8">Connect your GitHub</h1>
       {error && <div className="text-red-500 mb-4">{error}</div>}
       {step === 1 && !connected && (
-        <ConnectGitHubStep onConnect={handleConnectGitHub} />
+        <div className="flex flex-col items-center">
+          {isLoadingRepos ? (
+            <div className="mt-4 flex flex-col items-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              <p className="mt-2 text-sm text-gray-500">Connecting to GitHub...</p>
+            </div>
+          ) : (
+            <ConnectGitHubStep onConnect={handleConnectGitHub} />
+          )}
+        </div>
       )}
       {step === 2 && connected && (
         isLoadingRepos ? (
-          <div className="skeleton h-32 w-96">Loading repositories...</div>
+          <div className="flex flex-col items-center justify-center p-6">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+            <p className="mt-4 text-sm text-gray-500">Loading repositories...</p>
+          </div>
         ) : (
           <div className="w-full max-w-lg bg-white rounded shadow p-6">
             <h2 className="text-lg font-semibold mb-4">Select repositories to scan</h2>

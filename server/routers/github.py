@@ -29,6 +29,23 @@ class MixReposRequest(BaseModel):
     repo_names: List[str]
 
 
+class GithubRepo(BaseModel):
+    id: int
+    name: str
+    full_name: str
+    private: bool
+    owner: dict
+    html_url: str
+    description: str | None = None
+    language: str | None = None
+    stargazers_count: int = 0
+    watchers_count: int = 0
+    forks_count: int = 0
+    open_issues_count: int = 0
+    default_branch: str = "main"
+    visibility: str = "public"
+
+
 # --- Endpoints ---
 @router.post("/token")
 async def save_github_token(
@@ -46,10 +63,10 @@ async def save_github_token(
     return {"success": True}
 
 
-@router.get("/repos")
+@router.get("/repos", response_model=list[GithubRepo])
 async def get_github_repos(
     user: User = Depends(get_current_user), db: Session = Depends(get_db)
-):
+) -> list[GithubRepo]:
     profile = db.query(Profile).filter(Profile.id == user.id).first()
     if not profile or not getattr(profile, "github_token", None):
         raise HTTPException(status_code=404, detail="GitHub token not found for user.")
