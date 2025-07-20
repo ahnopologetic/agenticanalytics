@@ -5,6 +5,7 @@ from typing import Optional
 import git
 import httpx
 import jwt
+from tenacity import retry, stop_after_attempt, wait_exponential
 from config import config
 from fastapi import HTTPException
 from git import Repo
@@ -135,18 +136,14 @@ async def aclone_repository(
     temp_dir = tempfile.mkdtemp()
 
     repo_url = f"https://x-access-token:{installation_token}@github.com/{repo_name}.git"
+    repo_path = temp_dir
 
-    try:
-        # Clone the repository with specific branch if provided, otherwise use default branch
-        if branch:
-            repo = Repo.clone_from(repo_url, temp_dir, branch=branch)
-        else:
-            repo = Repo.clone_from(repo_url, temp_dir)
+    # Clone the repository with specific branch if provided, otherwise use default branch
+    if branch:
+        repo = Repo.clone_from(repo_url, temp_dir, branch=branch)
+    else:
+        repo = Repo.clone_from(repo_url, temp_dir)
         repo_path = repo.working_dir
-    except git.GitCommandError as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to clone repository: {str(e)}"
-        )
 
     logger.info("Cloned repository", repo_path=repo_path, branch=branch or "default")
     tool_context.state["git_repository_path"] = repo_path
