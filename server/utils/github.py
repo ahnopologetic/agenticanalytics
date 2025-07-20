@@ -1,5 +1,6 @@
 import tempfile
 import time
+from typing import Optional
 
 import git
 import httpx
@@ -74,14 +75,14 @@ async def get_installation_token() -> str:
 
 
 async def aclone_repository(
-    tool_context: ToolContext, repo_name: str, branch: str = None
+    tool_context: ToolContext, repo_name: str, branch: Optional[str] = None
 ) -> str:
     """
     Clone a GitHub repository and return the path to the cloned repository.
 
     Args:
         repo_name: str - the name of the repository to clone (e.g. "facebook/react", "facebook/react-native")
-        branch: str - the name of the branch to clone (defaults to repository's default branch)
+        branch: str | None - the name of the branch to clone (defaults to repository's default branch)
 
     Returns:
         str - the path to the cloned repository

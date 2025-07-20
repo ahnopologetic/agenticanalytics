@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect } from 'react'
-import { getUserSession, listRepos, getGithubRepoInfo, type GithubRepoInfo } from '../../api'
+import { getUserSession } from '../../api'
 import useUserSessions from '../../hooks/use-user-sessions'
 import { useUserContext } from '../../hooks/use-user-context'
 import { useQuery } from '@tanstack/react-query'
 import type { TrackingPlanEvent } from '../../api'
 import TrackingPlanSection from './TrackingPlanSection'
+import { useDeleteRepo, useRepos } from '../../hooks/use-repo'
+import { useGithubRepoInfo } from '../../hooks/use-github'
 
 // Define type for session event
 interface SessionEvent {
@@ -62,36 +64,17 @@ const Home = () => {
     const activityEndRef = useRef<HTMLDivElement>(null)
     const [openEventIds, setOpenEventIds] = useState<(string | number)[]>([])
     const [searchTerm, setSearchTerm] = useState('')
+    const { mutate: deleteRepo } = useDeleteRepo()
+    const { data: repos, isLoading: isReposLoading } = useRepos()
 
-    // Repos state
-    const {
-        data: repos = [],
-        isLoading: isReposLoading,
-    } = useQuery({
-        queryKey: ['repos'],
-        queryFn: listRepos,
-    })
+    const selectedRepo = repos?.find(r => r.id.toString() === selectedRepoId)
 
-    // Find selected repo object
-    const selectedRepo = repos.find(r => r.id.toString() === selectedRepoId)
-
-    // Fetch GitHub repo info (commit/status) for selected repo
     const {
         data: githubInfo,
         isLoading: isGithubInfoLoading,
         isError: isGithubInfoError,
         error: githubInfoError,
-    } = useQuery<GithubRepoInfo, Error>({
-        queryKey: ['github-info', selectedRepo?.url],
-        queryFn: () => {
-            if (!selectedRepo) throw new Error('No repo selected')
-            // Extract owner/repo from URL (e.g., https://github.com/owner/repo)
-            const match = selectedRepo.url.match(/github.com\/(.+\/[^/]+)/)
-            if (!match) throw new Error('Invalid GitHub repo URL')
-            return getGithubRepoInfo(match[1])
-        },
-        enabled: !!selectedRepo,
-    })
+    } = useGithubRepoInfo(selectedRepo?.url ?? '', !!selectedRepo?.url)
 
     // Session for selected repo
     const {
@@ -129,10 +112,20 @@ const Home = () => {
     const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value
         setSearchTerm(value)
-        const foundRepo = repos.find(repo =>
+        const foundRepo = repos?.find(repo =>
             repo.name.toLowerCase().includes(value.toLowerCase()) || repo.id.toString().includes(value)
         )
         setSelectedRepoId(foundRepo ? foundRepo.id.toString() : null)
+    }
+
+    const handleDeleteRepo = () => {
+        if (!selectedRepo) {
+            return
+        }
+        if (!window.confirm('Are you sure you want to delete this repository?')) {
+            return
+        }
+        deleteRepo(selectedRepo.id.toString())
     }
 
     return (
@@ -159,7 +152,7 @@ const Home = () => {
                             <span className="loading loading-spinner loading-lg"></span>
                         </li>
                     ) : (
-                        repos.map(repo => (
+                        repos?.map(repo => (
                             <li key={repo.id}>
                                 <button
                                     className={`justify-start w-full text-left ${selectedRepoId === repo.id.toString() ? 'text-primary' : ''}`}
@@ -238,10 +231,10 @@ const Home = () => {
                                             {githubInfo.status && (
                                                 <span
                                                     className={`badge ${githubInfo.status === 'success'
-                                                            ? 'badge-success'
-                                                            : githubInfo.status === 'failure'
-                                                                ? 'badge-error'
-                                                                : 'badge-warning'
+                                                        ? 'badge-success'
+                                                        : githubInfo.status === 'failure'
+                                                            ? 'badge-error'
+                                                            : 'badge-warning'
                                                         }`}
                                                 >
                                                     {githubInfo.status}
@@ -276,7 +269,7 @@ const Home = () => {
                                             className="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-40 z-10"
                                         >
                                             <li>
-                                                <button className="flex items-center gap-2 w-full">
+                                                <button className="flex items-center gap-2 w-full" onClick={handleDeleteRepo}>
                                                     {/* Lucide Trash2 icon */}
                                                     <svg
                                                         xmlns="http://www.w3.org/2000/svg"
