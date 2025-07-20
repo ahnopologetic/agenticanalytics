@@ -30,7 +30,7 @@ export function useUserSession(sessionId: string, enabled = true) {
  */
 export function useTalkToAgent() {
   const queryClient = useQueryClient();
-  
+
   return useApiMutation<unknown, TalkToAgentPayload>(
     (payload) => AgentService.createTask(payload),
     {
@@ -39,4 +39,4 @@ export function useTalkToAgent() {
       }
     }
   );
-} 
+}
