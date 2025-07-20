@@ -97,7 +97,12 @@ export type UserSession = {
     user_id: string;
     app_name: string;
     state: Record<string, unknown> | {
-        tracking_plans: TrackingPlanEvent[];
+        status?: string;
+        dependency_found?: boolean;
+        repo_id?: string;
+        user_id?: string;
+        session_id?: string;
+        dependency_reconnaissance_output?: string;
     };
     events: unknown[];
     last_update_time: number;

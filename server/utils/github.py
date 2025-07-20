@@ -74,6 +74,31 @@ async def get_installation_token() -> str:
         return token_resp.json()["token"]
 
 
+async def get_remote_default_branch(repo_url: str) -> Optional[str]:
+    """
+    Attempts to determine the default branch of a remote Git repository.
+
+    Args:
+        repo_url (str): The URL of the remote Git repository.
+
+    Returns:
+        str or None: The name of the default branch, or None if it cannot be determined.
+    """
+    try:
+        result = Repo.git.ls_remote("--symref", repo_url, "HEAD")
+
+        lines = result.splitlines()
+        for line in lines:
+            if "HEAD" in line and "refs/heads/" in line:
+                branch_name = line.split("refs/heads/")[-1].split("HEAD")[0].strip()
+                return branch_name
+        return None
+
+    except Exception as e:
+        logger.error("Error getting remote default branch", error=e)
+        return None
+
+
 async def aclone_repository(
     tool_context: ToolContext, repo_name: str, branch: Optional[str] = None
 ) -> str:
@@ -98,11 +123,17 @@ async def aclone_repository(
             detail="Repository name must be in the format of 'owner/repo'",
         )
 
+    if not branch:
+        default_branch = await get_remote_default_branch(
+            f"https://github.com/{repo_name}.git"
+        )
+        logger.debug("Default branch", default_branch=default_branch)
+        branch = default_branch
+
     installation_token = await get_installation_token()
-    # Create a temporary directory for the clone
+    logger.debug("Installation token", installation_token=installation_token)
     temp_dir = tempfile.mkdtemp()
 
-    # Construct the repo URL with token for auth
     repo_url = f"https://x-access-token:{installation_token}@github.com/{repo_name}.git"
 
     try:
