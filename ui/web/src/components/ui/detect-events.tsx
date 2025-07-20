@@ -7,7 +7,7 @@ const locationToPermlink = (location: string) => {
     return `${file}#L${line}`
 }
 
-const TrackingPlanSection = ({ events, repoUrl }: { events: TrackingPlanEvent[], repoUrl?: string }) => {
+const DetectedEventsSection = ({ events, repoUrl }: { events: TrackingPlanEvent[], repoUrl?: string }) => {
     const [openIdx, setOpenIdx] = useState<number | null>(null)
     const [search, setSearch] = useState('')
     const filtered = events.filter(e =>
@@ -19,7 +19,7 @@ const TrackingPlanSection = ({ events, repoUrl }: { events: TrackingPlanEvent[],
         <>
             <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-lg">Tracking Plan</h3>
+                    <h3 className="font-semibold text-lg">Detected Events</h3>
                     <span className="badge badge-primary">{filtered.length}</span>
                 </div>
                 <input
@@ -124,4 +124,4 @@ const TrackingPlanSection = ({ events, repoUrl }: { events: TrackingPlanEvent[],
     )
 }
 
-export default TrackingPlanSection 
+export default DetectedEventsSection 

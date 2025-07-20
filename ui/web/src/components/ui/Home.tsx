@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import useUserSessions from '../../hooks/use-user-sessions'
 import { useUserContext } from '../../hooks/use-user-context'
 import type { TrackingPlanEvent } from '../../api'
-import TrackingPlanSection from './TrackingPlanSection'
+import DetectedEventsSection from './detect-events'
 import { useDeleteRepo, useRepos } from '../../hooks/use-repo'
 import { useGithubRepoInfo } from '../../hooks/use-github'
 import { useTalkToAgent, useUserSession } from '../../hooks/use-agent'
@@ -399,7 +399,7 @@ const Home = () => {
                             </section>
                             {/* Tracking Plan Section */}
                             <section className="bg-base-100 rounded-lg p-4 shadow flex flex-col max-h-[400px] overflow-y-auto">
-                                <TrackingPlanSection
+                                <DetectedEventsSection
                                     events={
                                         hasTrackingPlan(session?.state)
                                             ? session?.state?.tracking_plans
