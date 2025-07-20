@@ -23,6 +23,17 @@ def save_repo_to_db(
         None
     """
     db_session = next(get_db())
+
+    # check if repo already exists
+    repo = (
+        db_session.query(Repo)
+        .filter(Repo.url == f"https://github.com/{repo_name}")
+        .first()
+    )
+    if repo:
+        tool_context.state["repo_id"] = str(repo.id)
+        return
+
     try:
         repo = Repo(
             name=repo_name,
