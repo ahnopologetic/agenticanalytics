@@ -1,7 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../../supabaseClient'
-import { useCallback, useEffect, useState } from 'react'
-import { getUserSessionList } from '../../api'
+import { useCallback } from 'react'
 import { useUserContext } from '../../hooks/use-user-context'
 
 import useUserSessions from '../../hooks/use-user-sessions'
