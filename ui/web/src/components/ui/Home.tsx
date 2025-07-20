@@ -7,6 +7,7 @@ import type { TrackingPlanEvent } from '../../api'
 import TrackingPlanSection from './TrackingPlanSection'
 import { useDeleteRepo, useRepos } from '../../hooks/use-repo'
 import { useGithubRepoInfo } from '../../hooks/use-github'
+import { useTalkToAgent } from '../../hooks/use-agent'
 
 // Define type for session event
 interface SessionEvent {
@@ -86,6 +87,7 @@ const Home = () => {
         enabled: !!selectedRepo?.session_id,
         refetchInterval: 5000,
     })
+    const { mutate: talkToAgent } = useTalkToAgent()
 
     // Scroll to bottom on new events
     useEffect(() => {
@@ -126,6 +128,18 @@ const Home = () => {
             return
         }
         deleteRepo(selectedRepo.id.toString())
+    }
+
+    const handleRescanRepo = () => {
+        if (!selectedRepo) {
+            return
+        }
+        talkToAgent({
+            message: selectedRepo.name,
+            context: {
+                user_id: user?.id ?? '',
+            }
+        })
     }
 
     return (
@@ -290,8 +304,7 @@ const Home = () => {
                                                 </button>
                                             </li>
                                             <li>
-                                                <button className="flex items-center gap-2 w-full">
-                                                    {/* Lucide RefreshCcw icon */}
+                                                <button className="flex items-center gap-2 w-full" onClick={handleRescanRepo}>
                                                     <svg
                                                         xmlns="http://www.w3.org/2000/svg"
                                                         width="18"
