@@ -31,7 +31,7 @@ const Navbar = () => {
           <span className="loading loading-spinner loading-sm"></span>
         ) : hasLoggedIn ? (
           <>
-            <Link to="/github-connect" className="btn btn-ghost" tabIndex={0} aria-label="Connect GitHub">Connect GitHub</Link>
+            <Link to="/github-connect" className="btn btn-ghost" tabIndex={0} aria-label="Scan More Repos">Scan More Repos</Link>
             <Link to="/tracking-plan" className="btn btn-ghost" tabIndex={0} aria-label="Tracking Plan">Tracking Plan</Link>
             <button
               className="btn btn-error ml-2"
