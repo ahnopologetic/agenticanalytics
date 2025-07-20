@@ -14,6 +14,19 @@ export function useRepos(enabled = true) {
   );
 }
 
+export function useDeleteRepo() {
+  const queryClient = useQueryClient();
+
+  return useApiMutation<void, string>(
+    (repoId) => RepoService.deleteRepo(repoId),
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['repo', 'list'] })
+      }
+    }
+  );
+}
+
 /**
  * Hook for fetching tracking plan events for a specific repository
  */
@@ -30,13 +43,13 @@ export function useTrackingPlanEvents(repoId: string, enabled = true) {
  */
 export function useCreateTrackingPlanEvent() {
   const queryClient = useQueryClient();
-  
+
   return useApiMutation<TrackingPlanEvent, Omit<TrackingPlanEvent, 'id' | 'created_at'>>(
     (event) => RepoService.createTrackingPlanEvent(event),
     {
       onSuccess: (data) => {
-        queryClient.invalidateQueries({ 
-          queryKey: ['repo', data.repo_id, 'events'] 
+        queryClient.invalidateQueries({
+          queryKey: ['repo', data.repo_id, 'events']
         });
       }
     }
@@ -48,16 +61,16 @@ export function useCreateTrackingPlanEvent() {
  */
 export function useUpdateTrackingPlanEvent() {
   const queryClient = useQueryClient();
-  
+
   return useApiMutation<
-    TrackingPlanEvent, 
+    TrackingPlanEvent,
     { eventId: string; event: Partial<TrackingPlanEvent> }
   >(
     ({ eventId, event }) => RepoService.updateTrackingPlanEvent(eventId, event),
     {
       onSuccess: (data) => {
-        queryClient.invalidateQueries({ 
-          queryKey: ['repo', data.repo_id, 'events'] 
+        queryClient.invalidateQueries({
+          queryKey: ['repo', data.repo_id, 'events']
         });
       }
     }
@@ -69,12 +82,12 @@ export function useUpdateTrackingPlanEvent() {
  */
 export function useDeleteTrackingPlanEvent() {
   const queryClient = useQueryClient();
-  
+
   return useApiMutation<void, string>(
     (eventId) => RepoService.deleteTrackingPlanEvent(eventId),
     {
       onSuccess: () => {
-        queryClient.invalidateQueries({ 
+        queryClient.invalidateQueries({
           queryKey: ['repo'],
           predicate: (query) => query.queryKey[2] === 'events'
         });
@@ -97,12 +110,12 @@ export function useExportTrackingPlanEvents() {
  */
 export function useImportTrackingPlanEvents() {
   const queryClient = useQueryClient();
-  
+
   return useApiMutation<TrackingPlanEvent[], File>(
     (file) => RepoService.importTrackingPlanEvents(file),
     {
       onSuccess: () => {
-        queryClient.invalidateQueries({ 
+        queryClient.invalidateQueries({
           queryKey: ['repo'],
           predicate: (query) => query.queryKey[2] === 'events'
         });

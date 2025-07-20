@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect } from 'react'
-import { getUserSession, listRepos, getGithubRepoInfo, type GithubRepoInfo } from '../../api'
+import { getUserSession } from '../../api'
 import useUserSessions from '../../hooks/use-user-sessions'
 import { useUserContext } from '../../hooks/use-user-context'
 import { useQuery } from '@tanstack/react-query'
 import type { TrackingPlanEvent } from '../../api'
 import TrackingPlanSection from './TrackingPlanSection'
+import { useDeleteRepo, useRepos } from '../../hooks/use-repo'
+import { useGithubRepoInfo } from '../../hooks/use-github'
 
 // Define type for session event
 interface SessionEvent {
@@ -62,36 +64,17 @@ const Home = () => {
     const activityEndRef = useRef<HTMLDivElement>(null)
     const [openEventIds, setOpenEventIds] = useState<(string | number)[]>([])
     const [searchTerm, setSearchTerm] = useState('')
+    const { mutate: deleteRepo } = useDeleteRepo()
+    const { data: repos, isLoading: isReposLoading } = useRepos()
 
-    // Repos state
-    const {
-        data: repos = [],
-        isLoading: isReposLoading,
-    } = useQuery({
-        queryKey: ['repos'],
-        queryFn: listRepos,
-    })
+    const selectedRepo = repos?.find(r => r.id.toString() === selectedRepoId)
 
-    // Find selected repo object
-    const selectedRepo = repos.find(r => r.id.toString() === selectedRepoId)
-
-    // Fetch GitHub repo info (commit/status) for selected repo
     const {
         data: githubInfo,
         isLoading: isGithubInfoLoading,
         isError: isGithubInfoError,
         error: githubInfoError,
-    } = useQuery<GithubRepoInfo, Error>({
-        queryKey: ['github-info', selectedRepo?.url],
-        queryFn: () => {
-            if (!selectedRepo) throw new Error('No repo selected')
-            // Extract owner/repo from URL (e.g., https://github.com/owner/repo)
-            const match = selectedRepo.url.match(/github.com\/(.+\/[^/]+)/)
-            if (!match) throw new Error('Invalid GitHub repo URL')
-            return getGithubRepoInfo(match[1])
-        },
-        enabled: !!selectedRepo,
-    })
+    } = useGithubRepoInfo(selectedRepo?.url ?? '', !!selectedRepo?.url)
 
     // Session for selected repo
     const {
@@ -129,10 +112,20 @@ const Home = () => {
     const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value
         setSearchTerm(value)
-        const foundRepo = repos.find(repo =>
+        const foundRepo = repos?.find(repo =>
             repo.name.toLowerCase().includes(value.toLowerCase()) || repo.id.toString().includes(value)
         )
         setSelectedRepoId(foundRepo ? foundRepo.id.toString() : null)
+    }
+
+    const handleDeleteRepo = () => {
+        if (!selectedRepo) {
+            return
+        }
+        if (!window.confirm('Are you sure you want to delete this repository?')) {
+            return
+        }
+        deleteRepo(selectedRepo.id.toString())
     }
 
     return (
@@ -159,7 +152,7 @@ const Home = () => {
                             <span className="loading loading-spinner loading-lg"></span>
                         </li>
                     ) : (
-                        repos.map(repo => (
+                        repos?.map(repo => (
                             <li key={repo.id}>
                                 <button
                                     className={`justify-start w-full text-left ${selectedRepoId === repo.id.toString() ? 'text-primary' : ''}`}
@@ -179,7 +172,7 @@ const Home = () => {
                 {selectedRepo ? (
                     <div className="w-full max-w-6xl mx-auto p-6">
                         {/* Repo Info Section */}
-                        <div className="flex flex-col gap-4 mb-6 border-b pb-4 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="flex flex-col gap-4 mb-6 border-b pb-4">
                             <div className="flex items-center gap-3">
                                 <h2 className="text-3xl font-bold">{selectedRepo.name}</h2>
                                 <a
@@ -195,37 +188,131 @@ const Home = () => {
                                     </svg>
                                 </a>
                             </div>
-                            <div className="flex flex-col gap-2 lg:items-end lg:flex-row lg:items-center">
-                                {selectedRepo.description && (
-                                    <div className="text-base-content/80 text-sm max-w-md line-clamp-2">{selectedRepo.description}</div>
-                                )}
-                                {/* Commit and status info */}
-                                {isGithubInfoLoading && (
-                                    <div className="text-xs text-base-content/60">Loading commit info...</div>
-                                )}
-                                {isGithubInfoError && (
-                                    <div className="text-xs text-error">{githubInfoError?.message || 'Failed to load commit info'}</div>
-                                )}
-                                {githubInfo && (
-                                    <div className="flex flex-wrap items-center gap-2 text-xs">
-                                        <span className="font-mono bg-base-200 px-2 py-1 rounded">{githubInfo.sha.slice(0, 7)}</span>
-                                        <button
-                                            className="font-semibold truncate max-w-[200px] text-left hover:underline focus:underline focus:outline-none cursor-pointer"
-                                            onClick={() => {
-                                                const commitUrl = `${selectedRepo.url}/commit/${githubInfo.sha}?from=agentic-analytics`
-                                                window.open(commitUrl, '_blank', 'noopener,noreferrer')
-                                            }}
-                                            aria-label={`View commit ${githubInfo.sha} on GitHub`}
+                            <div
+                                className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-4 items-start"
+                            >
+                                {/* Left: Repo description and commit info */}
+                                <div className="flex flex-col gap-2">
+                                    {selectedRepo.description && (
+                                        <div className="text-base-content/80 text-sm max-w-md line-clamp-2">
+                                            {selectedRepo.description}
+                                        </div>
+                                    )}
+                                    {/* Commit and status info */}
+                                    {isGithubInfoLoading && (
+                                        <div className="text-xs text-base-content/60">
+                                            Loading commit info...
+                                        </div>
+                                    )}
+                                    {isGithubInfoError && (
+                                        <div className="text-xs text-error">
+                                            {githubInfoError?.message || 'Failed to load commit info'}
+                                        </div>
+                                    )}
+                                    {githubInfo && (
+                                        <div className="flex flex-wrap items-center gap-2 text-xs">
+                                            <span className="font-mono bg-base-200 px-2 py-1 rounded">
+                                                {githubInfo.sha.slice(0, 7)}
+                                            </span>
+                                            <button
+                                                className="font-semibold truncate max-w-[200px] text-left hover:underline focus:underline focus:outline-none cursor-pointer"
+                                                onClick={() => {
+                                                    const commitUrl = `${selectedRepo.url}/commit/${githubInfo.sha}?from=agentic-analytics`
+                                                    window.open(commitUrl, '_blank', 'noopener,noreferrer')
+                                                }}
+                                                aria-label={`View commit ${githubInfo.sha} on GitHub`}
+                                                tabIndex={0}
+                                            >
+                                                {githubInfo.message}
+                                            </button>
+                                            <span className="text-base-content/60">
+                                                by {githubInfo.author} on {new Date(githubInfo.date).toLocaleString()}
+                                            </span>
+                                            {githubInfo.status && (
+                                                <span
+                                                    className={`badge ${githubInfo.status === 'success'
+                                                        ? 'badge-success'
+                                                        : githubInfo.status === 'failure'
+                                                            ? 'badge-error'
+                                                            : 'badge-warning'
+                                                        }`}
+                                                >
+                                                    {githubInfo.status}
+                                                </span>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                                {/* Right: Actions dropdown */}
+                                <div className="flex justify-end items-start">
+                                    {/* Dropdown menu for actions */}
+                                    <div className="dropdown dropdown-end">
+                                        <label tabIndex={0} className="btn btn-ghost btn-sm px-2">
+                                            {/* Lucide MoreVertical icon */}
+                                            <svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                width="20"
+                                                height="20"
+                                                fill="none"
+                                                viewBox="0 0 24 24"
+                                                stroke="currentColor"
+                                                strokeWidth={2}
+                                                className="lucide lucide-more-vertical"
+                                            >
+                                                <circle cx="12" cy="6" r="1.5" />
+                                                <circle cx="12" cy="12" r="1.5" />
+                                                <circle cx="12" cy="18" r="1.5" />
+                                            </svg>
+                                        </label>
+                                        <ul
                                             tabIndex={0}
+                                            className="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-40 z-10"
                                         >
-                                            {githubInfo.message}
-                                        </button>
-                                        <span className="text-base-content/60">by {githubInfo.author} on {new Date(githubInfo.date).toLocaleString()}</span>
-                                        {githubInfo.status && (
-                                            <span className={`badge ${githubInfo.status === 'success' ? 'badge-success' : githubInfo.status === 'failure' ? 'badge-error' : 'badge-warning'}`}>{githubInfo.status}</span>
-                                        )}
+                                            <li>
+                                                <button className="flex items-center gap-2 w-full" onClick={handleDeleteRepo}>
+                                                    {/* Lucide Trash2 icon */}
+                                                    <svg
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                        width="18"
+                                                        height="18"
+                                                        fill="none"
+                                                        viewBox="0 0 24 24"
+                                                        stroke="currentColor"
+                                                        strokeWidth={2}
+                                                        className="lucide lucide-trash-2"
+                                                    >
+                                                        <polyline points="3 6 5 6 21 6" />
+                                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" />
+                                                        <line x1="10" x2="10" y1="11" y2="17" />
+                                                        <line x1="14" x2="14" y1="11" y2="17" />
+                                                    </svg>
+                                                    Delete
+                                                </button>
+                                            </li>
+                                            <li>
+                                                <button className="flex items-center gap-2 w-full">
+                                                    {/* Lucide RefreshCcw icon */}
+                                                    <svg
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                        width="18"
+                                                        height="18"
+                                                        fill="none"
+                                                        viewBox="0 0 24 24"
+                                                        stroke="currentColor"
+                                                        strokeWidth={2}
+                                                        className="lucide lucide-refresh-ccw"
+                                                    >
+                                                        <path d="M3 2v6h6" />
+                                                        <path d="M21 12A9 9 0 0 1 6.7 19.3L3 16" />
+                                                        <path d="M21 22v-6h-6" />
+                                                        <path d="M3 12a9 9 0 0 1 14.3-7.3L21 8" />
+                                                    </svg>
+                                                    Rescan
+                                                </button>
+                                            </li>
+                                        </ul>
                                     </div>
-                                )}
+                                </div>
                             </div>
                         </div>
                         {/* Main Grid: Recent Activity & Tracking Plan */}

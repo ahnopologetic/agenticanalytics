@@ -126,6 +126,15 @@ async def get_github_repo_info(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    # sanitize repo name
+    repo = repo.strip()
+    if repo.startswith("https://github.com/"):
+        repo = repo.split("https://github.com/")[1]
+    if repo.endswith(".git"):
+        repo = repo.split(".git")[0]
+    if "/" not in repo:
+        raise HTTPException(status_code=400, detail="Invalid repo name.")
+
     profile = db.query(Profile).filter(Profile.id == user.id).first()
     if not profile or not getattr(profile, "github_token", None):
         raise HTTPException(status_code=404, detail="GitHub token not found for user.")

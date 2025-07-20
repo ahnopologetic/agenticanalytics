@@ -91,6 +91,13 @@ export class RepoService {
         });
     }
 
+    static deleteRepo(repoId: string): Promise<void> {
+        return createAPIRequest<void>({
+            method: 'DELETE',
+            url: `/repo/${repoId}`
+        });
+    }
+
     static listTrackingPlanEvents(repoId: string): Promise<TrackingPlanEvent[]> {
         return createAPIRequest<TrackingPlanEvent[]>({
             method: 'GET',
