@@ -30,6 +30,13 @@ export class GithubService {
             url: '/github/repos'
         });
     }
+    
+    static getAllRepos(): Promise<GithubRepo[]> {
+        return createAPIRequest<GithubRepo[]>({
+            method: 'GET',
+            url: '/auth/github/repos'
+        });
+    }
 
     static getReposBySessionId(sessionId: string): Promise<{ owners: Array<{ login: string, type: string, avatar_url: string, repos: Array<{ id: number, full_name: string }> }> }> {
         return createAPIRequest({

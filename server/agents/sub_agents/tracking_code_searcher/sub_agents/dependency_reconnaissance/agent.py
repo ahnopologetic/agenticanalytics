@@ -5,6 +5,7 @@ from drtail_prompt import load_prompt
 from pydantic import BaseModel, Field, ValidationError
 from google.adk.agents.callback_context import CallbackContext
 from google.genai import types
+from google.adk.agents.run_config import RunConfig
 from google.adk.agents import LlmAgent
 from config import config
 import structlog
@@ -71,11 +72,11 @@ def validate_dependency_reconnaissance_output(
 
 
 prompt = load_prompt(config.dependency_reconnaissance_agent_prompt_path)
+config = RunConfig(max_llm_calls=10)
 dependency_reconnaissance_agent = LlmAgent(
     name="dependency_reconnaissance_agent",
     description="A agent that can find dependencies between different tools and services",
-    # model=LiteLlm(model="openai/gpt-4o-mini"),
-    model="gemini-2.0-flash",
+    model="gemini-2.5-flash",
     instruction=prompt.messages[0].content,
     tools=[lc_shell_tool],
     output_key="dependency_reconnaissance_output",

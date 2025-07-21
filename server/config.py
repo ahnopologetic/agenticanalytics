@@ -32,6 +32,7 @@ class ServerConfig(BaseSettings):
     dependency_reconnaissance_agent_prompt_path: str = Field(
         ..., env="DEPENDENCY_RECONNAISSANCE_AGENT_PROMPT_PATH"
     )
+    agentops_api_key: str = Field(..., env="AGENTOPS_API_KEY")
 
     @property
     def github_app_private_key(self) -> str:

@@ -6,6 +6,8 @@ import httpx
 from cryptography.fernet import Fernet
 from structlog import get_logger
 from sqlalchemy.orm import Session
+from routers.deps import get_current_user
+from gotrue.types import User
 from utils.db_session import get_db
 from db_models import Profile
 
@@ -126,6 +128,7 @@ async def github_oauth_callback(
         "github_login": github_login,
         "encrypted_token": encrypted_token,
     }
+    logger.info("Oauth token saved", encrypted_token=encrypted_token)
     redirect_url = f"{FRONTEND_URL}/github-connect?session_id={session_id}"
     from fastapi.responses import RedirectResponse
 
@@ -141,14 +144,26 @@ async def github_oauth_orgs(session_id: str):
 
 
 @router.get("/github/repos")
-async def github_oauth_repos(session_id: str):
-    session = github_oauth_sessions.get(session_id)
-    if not session:
-        raise HTTPException(status_code=404, detail="Session not found or expired.")
-    encrypted_token = session.get("encrypted_token")
-    if not encrypted_token:
-        raise HTTPException(status_code=400, detail="No access token in session.")
-    access_token = fernet.decrypt(encrypted_token.encode()).decode()
+async def github_oauth_repos(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    # session = github_oauth_sessions.get(session_id)
+    # if not session:
+    #     raise HTTPException(status_code=404, detail="Session not found or expired.")
+    # encrypted_token = session.get("encrypted_token")
+    # if not encrypted_token:
+    #     raise HTTPException(status_code=400, detail="No access token in session.")
+    profile = db.query(Profile).filter(Profile.id == user.id).first()
+    if not profile or not getattr(profile, "github_token", None):
+        raise HTTPException(status_code=404, detail="GitHub token not found for user.")
+    encrypted_token = profile.github_token
+
+    try:
+        access_token = fernet.decrypt(encrypted_token.encode()).decode()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid GitHub token.")
+
     async with httpx.AsyncClient() as client:
         user_resp = await client.get(
             GITHUB_API_USER_URL,

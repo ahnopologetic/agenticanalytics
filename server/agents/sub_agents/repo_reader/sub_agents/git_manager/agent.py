@@ -1,4 +1,5 @@
 import asyncio  # For async operations and delays
+from pathlib import Path
 from typing import Optional
 
 import structlog
@@ -19,7 +20,7 @@ def save_repo_to_db(
     branch: Optional[
         str
     ] = None,  # Make branch optional for consistency with aclone_repository
-):
+) -> dict:
     """
     Save the repository to the database.
     Args:
@@ -27,7 +28,11 @@ def save_repo_to_db(
         repo_name: str
         branch: Optional[str] - the branch to clone the repository
     Returns:
-        None
+        dict:
+            {
+                "status": "success",
+                "repo_id": str(repo.id),
+            }
     """
     db_session = next(get_db())
 
@@ -46,7 +51,7 @@ def save_repo_to_db(
         )
         tool_context.state["repo_id"] = str(repo.id)
         db_session.commit()
-        return
+        return {"status": "success", "repo_id": str(repo.id)}
 
     try:
         repo = Repo(
@@ -66,13 +71,15 @@ def save_repo_to_db(
     finally:
         db_session.close()
 
+    return {"status": "success", "repo_id": str(repo.id)}
+
 
 # --- New Wrapper Tool for aclone_repository with Retry Logic ---
 async def aclone_repository_with_retry(
     tool_context: ToolContext,
     repo_name: str,
     branch: Optional[str] = None,  # Initial branch, can be None
-):
+) -> dict:
     """
     Attempts to clone a repository, retrying with common alternative branches
     if the initial attempt fails due to a branch not found error.
@@ -82,7 +89,12 @@ async def aclone_repository_with_retry(
         repo_name: str
         branch: Optional[str]
     Returns:
-        str - the path to the cloned repository
+        dict:
+            {
+                "status": "success",
+                "cloned_branch": str,
+                "path": str,
+            }
     """
     # Define common alternative branches to try
     alternative_branches = ["main", "master", "develop"]
@@ -110,31 +122,19 @@ async def aclone_repository_with_retry(
         try:
             logger.info(f"Trying to clone {repo_name} using branch: {current_branch}")
             # Assuming aclone_repository is an async function
-            await aclone_repository(
+            result = await aclone_repository(
                 tool_context=tool_context,
                 repo_name=repo_name,
                 branch=current_branch,
             )
-            logger.info(
-                f"Successfully cloned {repo_name} with branch: {current_branch}"
-            )
-            tool_context.state["cloned_branch"] = (
-                current_branch  # Store the successfully used branch
-            )
-            return  # Success!
+
         except Exception as e:
-            # IMPORTANT: You need to inspect the exception type/message from `aclone_repository`
-            # to determine if it's a "branch not found" error.
-            # Replace `SpecificBranchNotFoundError` with the actual exception from your `utils.github`
-            # or check `e.message` if it's a generic exception.
             is_branch_not_found_error = False
             if (
                 f"branch {current_branch} not found" in str(e).lower()
                 or "reference not found" in str(e).lower()
-            ):  # Generic check
+            ):
                 is_branch_not_found_error = True
-            # if isinstance(e, SpecificBranchNotFoundError): # If aclone_repository raises a specific error
-            #     is_branch_not_found_error = True
 
             if (
                 is_branch_not_found_error
@@ -149,17 +149,27 @@ async def aclone_repository_with_retry(
                 logger.error(
                     f"Failed to clone {repo_name} after all attempts or due to unhandled error: {e}"
                 )
-                # If it's the last attempt or not a "branch not found" error, re-raise
-                raise  # Re-raise the original exception if retries are exhausted or it's a different error
+                return {
+                    "status": "error",
+                    "error": str(e),
+                }
 
-    # If we get here, it means all attempts failed and an exception was re-raised on the last attempt.
-    # This return is mostly for type hinting; the raise should prevent reaching here.
-    raise Exception(f"Failed to clone {repo_name} after exhausting all branch options.")
+        logger.info(
+            f"Successfully cloned {repo_name} with branch: {current_branch}"
+        )
+        if Path(result).exists():
+            break
+
+    return {
+        "status": "success",
+        "cloned_branch": current_branch,
+        "path": tool_context.state["git_repository_path"],
+    }
 
 
 git_manager_agent = LlmAgent(
     name="git_manager_agent",
-    model="gemini-2.0-flash",
+    model="gemini-2.5-flash",
     description="Manage the git repository.",
     instruction="""
     Given the repository url, first save the repository to the database and then clone the repository.
@@ -169,18 +179,51 @@ git_manager_agent = LlmAgent(
     will intelligently attempt to clone, trying common alternative branches like 'main' or 'master'
     if the initial attempt or inferred branch fails.
 
-    Example
-    User Input: https://github.com/UnlyEd/next-right-now/tree/main
-    1. Function Call: save_repo_to_db(repo_name="UnlyEd/next-right-now", branch="main")
-    Reason: Save the repository to the database first.
-    2. Function Call: aclone_repository_with_retry(repo_name="UnlyEd/next-right-now", branch="main")
-    Reason: The repository name is the part of the URL that identifies the repository, e.g., "facebook/react" or "UnlyEd/next-right-now". From the given URL, the repository name is "UnlyEd/next-right-now". This tool handles retries with alternative branches.
+    <example>
+    Case 1:
+        User Input: https://github.com/UnlyEd/next-right-now/tree/main
 
-    User Input: https://github.com/UnlyEd/next-right-now
-    1. Function Call: save_repo_to_db(repo_name="UnlyEd/next-right-now")
-    Reason: Save the repository to the database first.
-    2. Function Call: aclone_repository_with_retry(repo_name="UnlyEd/next-right-now")
-    Reason: The repository name is the part of the URL that identifies the repository, e.g., "facebook/react" or "UnlyEd/next-right-now". From the given URL, the repository name is "UnlyEd/next-right-now". This tool handles retries with alternative branches.
+        Tool Calls:
+            1. Function Call: aclone_repository_with_retry(repo_name="UnlyEd/next-right-now", branch="main")
+            Reason: The repository name is the part of the URL that identifies the repository. From the given URL, the repository name is "UnlyEd/next-right-now". This tool handles retries with alternative branches.
+            2. Function Call: save_repo_to_db(repo_name="UnlyEd/next-right-now", branch="main")
+            Reason: Save the repository to the database after cloning.
+        Output:
+            {
+                "repo_id": "1234567890",
+                "cloned_branch": "main",
+                "path": "/tmp/some-repo-path",
+                "status": "success",
+            }
+
+    Case 2:
+        User Input: https://github.com/facebook/react
+
+        Tool Calls:
+            1. Function Call: aclone_repository_with_retry(repo_name="facebook/react")
+            Reason: The repository name is the part of the URL that identifies the repository. From the given URL, the repository name is "facebook/react". This tool handles retries with alternative branches.
+            2. Function Call: save_repo_to_db(repo_name="facebook/react")
+            Reason: Save the repository to the database after cloning.
+        Output:
+            {
+                "repo_id": "123",
+                "cloned_branch": "master",
+                "path": "/tmp/some-repo-path",
+                "status": "success",
+            }
+    
+    Case 3:
+        User Input: https://github.com/none-existing-repo
+
+        Tool Calls:
+            1. Function Call: aclone_repository_with_retry(repo_name="none-existing-repo")
+            Reason: The repository name is the part of the URL that identifies the repository. From the given URL, the repository name is "none-existing-repo". This tool will return an error if the repository is not found.
+        Output:
+            {
+                "status": "error",
+                "error": "Failed to clone repository: Repository not found",
+            }
+    </example>
     """,
     tools=[aclone_repository_with_retry, save_repo_to_db],  # Use the wrapper tool
 )

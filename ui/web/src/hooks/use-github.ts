@@ -9,7 +9,7 @@ import { useApiQuery, useApiMutation } from './use-api';
 export function useGithubRepos() {
   return useApiQuery<GithubRepo[]>(
     ['github', 'repos'],
-    () => GithubService.getRepos()
+    () => GithubService.getAllRepos()
   );
 }
 

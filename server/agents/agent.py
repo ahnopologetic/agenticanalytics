@@ -1,10 +1,16 @@
+import agentops
 from google.adk.agents import SequentialAgent
 from google.adk.agents.callback_context import CallbackContext
-
+from config import config
 from agents.sub_agents import (
+    event_writer,
     git_manager_agent,
     tracking_code_searcher_agent,
-    event_writer,
+)
+
+agentops.init(
+    config.agentops_api_key,
+    trace_name="agentic_analytics",
 )
 
 
