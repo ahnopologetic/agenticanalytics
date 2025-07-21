@@ -1,17 +1,15 @@
-import os
-from typing import Optional
-
 import agentops
 from config import config
 from google.adk.agents import LlmAgent, SequentialAgent
-from google.adk.agents.callback_context import CallbackContext
-from agents.shared.tools import lc_shell_tool
-from google.genai.types import GenerateContentConfig
 
+from agents.shared.tools import (
+    lc_shell_tool,
+    list_directory,
+    read_file,
+    write_file,
+)
 from agents.sub_agents import (
-    event_writer,
-    git_manager_agent,
-    tracking_code_searcher_agent,
+    pattern_scanner_agent,
 )
 
 if config.agentops_api_key:
@@ -20,152 +18,94 @@ if config.agentops_api_key:
         trace_name="agentic_analytics",
     )
 
-
-def _after_agent_callback(callback_context: CallbackContext) -> None:
-    state = callback_context.state
-    if state["patterns"] is None:
-        state.update({"status": "failed"})
-
-
-# root_agent = SequentialAgent(
-#     name="agentic_analytics",
-#     description="Analytics Tracking Plan Automation Assistant",
-#     sub_agents=[
-#         git_manager_agent,
-#         tracking_code_searcher_agent,
-#         event_writer,
-#     ],
-#     after_agent_callback=_after_agent_callback,
-# )
-
-
-# understand project -> find tracking code -> write event -> write tracking plan
-def list_directory(path: str, depth: int = 1) -> str:
-    """
-    List the contents of a directory.
-
-    Args:
-        path: The path to the directory to list.
-        depth: The depth of the directory to list.
-
-    Returns:
-        A string representation of the directory contents.
-    """
-    if depth == 0:
-        return ""
-    return "\n".join(os.listdir(path))
-
-
-def read_file(
-    path: str, start_line: Optional[int] = None, end_line: Optional[int] = None
-) -> str:
-    """
-    Read a file and return the contents.
-
-    Args:
-        path: The path to the file to read.
-        start_line: The start line to read.
-        end_line: The end line to read.
-
-    Returns:
-        A string representation of the file contents.
-    """
-    with open(path, "r") as f:
-        if start_line and end_line:
-            if start_line > end_line:
-                raise ValueError("Start line must be less than end line")
-            lines = f.readlines()
-            return "\n".join(lines[start_line - 1 : end_line])
-        elif start_line:
-            lines = f.readlines()
-            return "\n".join(lines[start_line - 1 :])
-        else:
-            return f.read()
-
-
-INSTRUCTIONS = """
-You are an expert in analytics tracking plan automation.
-You are given a project and you need to understand the project and write a tracking plan for it.
-
-<general_instructions>
-1. Understand the project and its dependencies.
-2. Given dependencies, identify and use patterns to help finding the tracking code in the codebase.
-3. Scan the codebase for the tracking codes thoroughly to list down all the tracking codes possible.
-4. Write a tracking plan for the tracking codes.
-</general_instructions>
-
-<pattern_finding>
-Analytics tracking code is usually a combination of a pattern and a unique identifier.
-Read the codebase and identify the patterns that are used to track events.
-To verify the pattern, you can use ripgrep (rg) with the shell tool.
-Make sure you do not print out all the results, only check number of matches:
-
-e.g., rg "<pattern>" <path> -l | wc -l
-e.g., rg "trackEvent" src/components/Button.tsx -l | wc -l
-
-List up all the relevant patterns you found. Patterns with the same namespace should be grouped together. For instance, if you find "Mixpanel" and also found "Mixpanel.track" and "Mixpanel.trackEvent", you should group them together into more specific patterns, which is "Mixpanel.track" and "Mixpanel.trackEvent".
-
-</pattern_finding>
-
-<special_instructions>
-Your job is to find event tracking patterns in the codebase, not `identify` or `people` codes which are used for other purposes.
-Our target usually comes in a pair of event name and event properties.
-
-</special_instructions>
-
-Show the list of patterns you found in json list format. If you cannot find any patterns, return an empty list.
-
-<example>
-// if you find the patterns, return them in a list
-[
-    "Mixpanel.track",
-    "Mixpanel.trackEvent",
-    "Amplitude.track",
-    "Amplitude.trackEvent",
-    "Segment.track",
-    "Segment.trackEvent",
-    "GoogleAnalytics.track",
-]
-
-// if you cannot find any patterns, return an empty list
-[]
-
-</example>
-
-"""
-
-"""
-<tracking_plan>
-Use the following schema to write the tracking plan:
-
-<schema>
-class AnalyticsTrackEvent(BaseModel):
-    name: str = Field(description="The name of the event")
-    properties: dict | list | None = Field(description="The properties of the event")
-    location: str = Field(description="The location of the event in the codebase", example="src/components/Button.tsx:10")
-
-class AnalyticsTrackPlan(BaseModel):
-    events: list[AnalyticsTrackEvent] = Field(description="The events to track")
-</schema>
-
-Make sure the output is in JSON format and is valid against the schema.
-</tracking_plan>
-
-"""
-
-root_agent = LlmAgent(
-    name="agentic_analytics",
-    model="gemini-2.5-flash",
+# new agent to write tracking plan
+# based on patterns, go through the codebase and write tracking plan
+tracking_plan_writer_agent = LlmAgent(
+    name="tracking_plan_writer",
     description="Analytics Tracking Plan Automation Assistant",
-    instruction=INSTRUCTIONS,
+    model="gemini-2.5-flash",
+    instruction="""
+    You are an expert in analytics tracking plan automation.
+    You are given a list of patterns and you need to read the codebase and write a tracking plan for it.
+
+    <general_instructions>
+    1. Understand the project and its dependencies.
+    2. Given patterns, read the codebase and identify the analytics tracking events.
+        - For known sdk, you can use `analyze-tracking` command to scan the codebase for the tracking events.
+        - For unknown sdk, you should use basic linux shell tools (including ripgrep, find, and more advanced tools) to scan the codebase for the tracking events. 
+    3. Incrementally write the tracking plan (in jsonnl format) for the analytics tracking events. 
+        - Create a new file for each analytics tracking event. Make sure the file name starts with `aatx_` prefix. Only append to the file if the file already exists.
+        - Read current tracking plan and update the tracking plan using the tools provided.
+    </general_instructions>
+
+    <analytics_tracking_event>
+    Analytics tracking event is an object with the following fields:
+    - name: string, the name of the analytics tracking event, can be any case based on internal convention
+    - description: string, the description of the analytics tracking event
+    - location: string, the location of the analytics tracking event in the codebase
+    - properties: array of objects, the properties of the analytics tracking event
+        - property_name: string, the name of the property
+        - property_type: string, the type of the property
+        - property_description: string, the description of the property
+    
+    <example>
+    {
+        "name": "User Signed Up",
+        "description": "User signed up",
+        "location": "src/components/Button.tsx",
+        "properties": []
+    }
+
+    {
+        "name": "user_signed_up",
+        "description": "User signed up",
+        "location": "src/components/Button.tsx",
+        "properties": [
+            {
+                "property_name": "user_id",
+                "property_type": "string",
+                "property_description": "The id of the user"
+            },
+            {
+                "property_name": "user_name",
+                "property_type": "string",
+                "property_description": "The name of the user"
+            }
+        ]
+    }
+    </example>
+    </analytics_tracking_event>
+
+    <tools>
+    - lc_shell_tool: use the linux shell tool
+        - basic linux shell tools: find, grep, etc.
+        - analyze-tracking: analytics tracking code finder cli, augmented by AST/treesitter.
+            - npx -y @flisk/analyze-tracking /path/to/project [options]
+            - Key Options:
+                -o, --output <output_file>: Name of the output file (default: tracking-schema.yaml)
+                -c, --customFunction <function_name>: Specify a custom tracking function
+                --format <format>: Output format, either yaml (default) or json. If an invalid value is provided, the CLI will exit with an error.
+                --stdout: Print the output to the terminal instead of writing to a file (works with both YAML and JSON)
+        - ripgrep: search the codebase for the tracking events (only for unknown sdk)
+    - list_directory: list the directory
+    - read_file: read the file
+    - write_file: write the file
+    </tools>
+    """,
     tools=[
+        lc_shell_tool,
         list_directory,
         read_file,
-        lc_shell_tool,
+        write_file,
     ],
-    generate_content_config=GenerateContentConfig(
-        temperature=0.0,
-    ),
-    output_key="patterns",
-    after_agent_callback=_after_agent_callback,
+)
+
+
+root_agent = SequentialAgent(
+    name="tracking_plan_discovery_agent",
+    description="Analytics Tracking Plan Automation Assistant",
+    sub_agents=[
+        pattern_scanner_agent,
+        tracking_plan_writer_agent,
+    ],
 )
