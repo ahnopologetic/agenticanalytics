@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "a2a-sdk>=0.2.4",
+    "agentops",
     "drtail-prompt",
     "gitpython>=3.1.44",
     "google-adk>=1.0.0",
