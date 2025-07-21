@@ -8,10 +8,11 @@ from agents.sub_agents import (
     tracking_code_searcher_agent,
 )
 
-agentops.init(
-    config.agentops_api_key,
-    trace_name="agentic_analytics",
-)
+if config.agentops_api_key:
+    agentops.init(
+        config.agentops_api_key,
+        trace_name="agentic_analytics",
+    )
 
 
 def _after_agent_callback(callback_context: CallbackContext) -> None:

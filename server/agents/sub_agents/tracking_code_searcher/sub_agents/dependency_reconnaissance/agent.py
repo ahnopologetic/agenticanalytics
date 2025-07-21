@@ -16,7 +16,7 @@ logger = structlog.get_logger(__name__)
 
 
 class DependencyReconnaissanceOutput(BaseModel):
-    project_path: Path
+    project_path: Path | str
     tracking_sdk: Literal[
         "google_analytics",
         "firebase_analytics",
@@ -30,8 +30,9 @@ class DependencyReconnaissanceOutput(BaseModel):
         "pendo",
         "heap",
         "snowplow",
+        "none",
     ] = Field(..., description="The tracking SDK used in the project")
-    package_file_path: Path
+    package_file_path: Path | str
     language: Literal[
         "javascript", "typescript", "swift", "kotlin", "ruby", "go", "python"
     ]
@@ -57,7 +58,18 @@ def validate_dependency_reconnaissance_output(
             output=message,
         )
         callback_context.state.update({"dependency_found": False})
-        raise
+        return
+
+    if output.tracking_sdk == "none":
+        callback_context.state.update(
+            {
+                "dependency_found": False,
+                "status": "failed",
+                "error": "No tracking SDK is found",
+            }
+        )
+        return
+
     logger.info(
         f"[{callback_context.agent_name}] Dependency found: {output.model_dump_json()}",
         agent_name=callback_context.agent_name,
