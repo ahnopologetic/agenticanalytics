@@ -127,6 +127,12 @@ async def aclone_repository_with_retry(
                 repo_name=repo_name,
                 branch=current_branch,
             )
+            if Path(result).exists():
+                logger.info(
+                    f"Successfully cloned {repo_name} with branch: {current_branch}",
+                    cloned_path=result,
+                )
+                break
 
         except Exception as e:
             is_branch_not_found_error = False
@@ -153,12 +159,6 @@ async def aclone_repository_with_retry(
                     "status": "error",
                     "error": str(e),
                 }
-
-        logger.info(
-            f"Successfully cloned {repo_name} with branch: {current_branch}"
-        )
-        if Path(result).exists():
-            break
 
     return {
         "status": "success",
