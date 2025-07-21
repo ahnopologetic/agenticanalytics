@@ -67,21 +67,28 @@ async def save_github_token(
 async def get_github_repos(
     user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ) -> list[GithubRepo]:
+    """
+    Fetch all user and org repositories (including private) for the authenticated user.
+    """
     profile = db.query(Profile).filter(Profile.id == user.id).first()
     if not profile or not getattr(profile, "github_token", None):
         raise HTTPException(status_code=404, detail="GitHub token not found for user.")
     github_token = profile.github_token
     logger.info("GitHub token", github_token=github_token)
     all_repos = []
-    page = 1
+
+    headers = {
+        "Authorization": f"token {github_token}",
+        "Accept": "application/vnd.github+json",
+    }
+
     async with httpx.AsyncClient() as client:
+        # Fetch user repos (all, including private)
+        page = 1
         while True:
-            gh_resp = await client.get(
+            user_repos_resp = await client.get(
                 "https://api.github.com/user/repos",
-                headers={
-                    "Authorization": f"token {github_token}",
-                    "Accept": "application/vnd.github+json",
-                },
+                headers=headers,
                 params={
                     "visibility": "all",
                     "affiliation": "owner,collaborator,organization_member",
@@ -89,18 +96,61 @@ async def get_github_repos(
                     "page": page,
                 },
             )
-            if gh_resp.status_code != 200:
+            if user_repos_resp.status_code != 200:
                 raise HTTPException(
-                    status_code=gh_resp.status_code,
-                    detail="Failed to fetch GitHub repos.",
+                    status_code=user_repos_resp.status_code,
+                    detail="Failed to fetch GitHub user repos.",
                 )
-            data = gh_resp.json()
+            data = user_repos_resp.json()
             if not data:
                 break
             all_repos.extend(data)
             if len(data) < 100:
                 break
             page += 1
+
+        # Fetch orgs for the user
+        orgs_resp = await client.get(
+            "https://api.github.com/user/orgs",
+            headers=headers,
+        )
+        if orgs_resp.status_code == 200:
+            orgs = orgs_resp.json()
+        else:
+            orgs = []
+
+        # For each org, fetch all repos (including private)
+        for org in orgs:
+            org_login = org.get("login")
+            if not org_login:
+                continue
+            page = 1
+            while True:
+                org_repos_resp = await client.get(
+                    f"https://api.github.com/orgs/{org_login}/repos",
+                    headers=headers,
+                    params={
+                        "type": "all",  # includes private and public
+                        "per_page": 100,
+                        "page": page,
+                    },
+                )
+                if org_repos_resp.status_code != 200:
+                    logger.warning(
+                        "Failed to fetch org repos",
+                        org=org_login,
+                        status_code=org_repos_resp.status_code,
+                        detail=org_repos_resp.text,
+                    )
+                    break
+                org_data = org_repos_resp.json()
+                if not org_data:
+                    break
+                all_repos.extend(org_data)
+                if len(org_data) < 100:
+                    break
+                page += 1
+
     return all_repos
 
 
