@@ -1,3 +1,4 @@
+from pathlib import Path
 import structlog
 from config import config
 from drtail_prompt import load_prompt
@@ -13,11 +14,20 @@ logger = structlog.get_logger(__name__)
 
 class Pattern(BaseModel):
     pattern: str
-    output_file: str
+    output_file: Path
 
 
 class PatternMatchingAnalyzeTrackingOutput(BaseModel):
     patterns: list[Pattern]
+
+
+def validate_pattern_matching_analyze_tracking_input(
+    callback_context: CallbackContext,
+) -> None:
+    if "dependency_reconnaissance_output" not in callback_context.state:
+        raise ValueError("Dependency reconnaissance output is not found")
+    if callback_context.state["dependency_found"] is False:
+        raise ValueError("No tracking SDK is found")
 
 
 def validate_pattern_matching_analyze_tracking_output(
@@ -45,7 +55,7 @@ def validate_pattern_matching_analyze_tracking_output(
             agent_name=callback_context.agent_name,
             output=message,
         )
-        raise
+        return
     logger.info(
         f"[{callback_context.agent_name}] Pattern matching analyze tracking output: {message}"
     )
@@ -68,6 +78,7 @@ pattern_matching_analyze_tracking_agent = LlmAgent(
     instruction=prompt.messages[0].content,
     tools=[lc_shell_tool],
     output_key="pattern_matching_analyze_tracking_output",
+    before_agent_callback=validate_pattern_matching_analyze_tracking_input,
     after_agent_callback=validate_pattern_matching_analyze_tracking_output,
     generate_content_config=types.GenerateContentConfig(temperature=0.1),
 )

@@ -21,7 +21,7 @@ export function useUserSession(sessionId: string, enabled = true) {
   return useApiQuery<UserSession>(
     ['agent', 'session', sessionId],
     () => AgentService.getSession(sessionId),
-    { enabled: enabled && !!sessionId }
+    { enabled: enabled && !!sessionId, refetchInterval: 10000 }
   );
 }
 

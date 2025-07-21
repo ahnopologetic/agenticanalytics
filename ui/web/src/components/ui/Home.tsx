@@ -6,7 +6,7 @@ import DetectedEventsSection from './detect-events'
 import { useDeleteRepo, useRepos } from '../../hooks/use-repo'
 import { useGithubRepoInfo } from '../../hooks/use-github'
 import { useTalkToAgent, useUserSession } from '../../hooks/use-agent'
-import { Circle, CircleCheck, LoaderCircle } from 'lucide-react'
+import { Circle, CircleCheck, LoaderCircle, RefreshCw } from 'lucide-react'
 
 // Define type for session event
 interface SessionEvent {
@@ -80,6 +80,7 @@ const Home = () => {
     const {
         data: session,
         isLoading: isSessionLoading,
+        refetch: refetchSession,
     } = useUserSession(selectedRepo?.session_id ?? '')
     const { mutate: talkToAgent } = useTalkToAgent()
 
@@ -134,6 +135,13 @@ const Home = () => {
                 user_id: user?.id ?? '',
             }
         })
+        refetchSession()
+    }
+
+    const handleRefreshSession = () => {
+        if (selectedRepo?.session_id) {
+            refetchSession();
+        }
     }
 
     return (
@@ -199,8 +207,11 @@ const Home = () => {
                                     <span title="Completed" className="ml-2 text-success">
                                         <CircleCheck className="w-5 h-5" color="green" />
                                     </span>
-                                ) : session?.state?.status === "not_started" ? (
-                                    <span title="Not Started" className="ml-2 text-error animate-pulse">
+                                ) : session?.state?.status === "not_started" || session?.state?.status === "failed" ? (
+                                    <span
+                                        className="ml-2 text-error animate-pulse tooltip"
+                                        data-tip={session?.state?.error || "Not Started"}
+                                    >
                                         <Circle className="w-3 h-3" color="red" fill="red" />
                                     </span>
                                 ) : (
@@ -208,6 +219,15 @@ const Home = () => {
                                         <LoaderCircle className="w-5 h-5" color="#eab308" />
                                     </span>
                                 )}
+                                <button
+                                    onClick={handleRefreshSession}
+                                    className="btn btn-sm btn-ghost btn-square tooltip"
+                                    data-tip="Refresh session status"
+                                    aria-label="Refresh session status"
+                                    tabIndex={0}
+                                >
+                                    <RefreshCw className="w-4 h-4" />
+                                </button>
                             </div>
                             <div
                                 className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-4 items-start"
@@ -358,18 +378,19 @@ const Home = () => {
                                                 return (
                                                     <div key={ev.id ?? idx} className="border rounded-lg bg-base-100 shadow-sm">
                                                         <button
-                                                            className="w-full flex items-center gap-3 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/40 transition"
+                                                            className="w-full grid grid-cols-[auto_1fr_auto_auto] items-center gap-3 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/40 transition"
                                                             onClick={() => handleToggleEvent(ev.id ?? idx)}
                                                             aria-expanded={isOpen}
                                                             aria-controls={`event-panel-${ev.id ?? idx}`}
                                                         >
-                                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold ${getAuthorColor(ev.author)}`}
+                                                            <div
+                                                                className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold ${getAuthorColor(ev.author)}`}
                                                                 title={ev.author}
                                                                 aria-label={ev.author}
                                                             >
                                                                 {ev.author?.[0]?.toUpperCase() || '?'}
                                                             </div>
-                                                            <div className="flex-1 text-left">
+                                                            <div className="min-w-0 text-left">
                                                                 <div className="text-base-content font-medium line-clamp-1">{ev.author}</div>
                                                                 <div className="text-base-content/80 text-sm line-clamp-1">{getEventText(ev)}</div>
                                                             </div>

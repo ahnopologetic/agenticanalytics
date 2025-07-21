@@ -1,7 +1,7 @@
 FROM python:3.13-slim
 
 # Install ffmpeg
-RUN apt-get update && apt-get install -y git curl && apt-get clean && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y git curl ripgrep jq && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install nvm, Node.js, and npm in one RUN to preserve environment
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash \

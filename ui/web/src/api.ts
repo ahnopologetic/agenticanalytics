@@ -98,6 +98,7 @@ export type UserSession = {
     app_name: string;
     state: Record<string, unknown> | {
         status?: string;
+        error?: string;
         dependency_found?: boolean;
         repo_id?: string;
         user_id?: string;
