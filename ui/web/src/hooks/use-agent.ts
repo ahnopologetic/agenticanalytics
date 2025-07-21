@@ -36,6 +36,7 @@ export function useTalkToAgent() {
     {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['agent', 'sessions'] });
+        queryClient.invalidateQueries({ queryKey: ['agent', 'session'] });
       }
     }
   );
