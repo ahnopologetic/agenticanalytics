@@ -1,11 +1,16 @@
-from fastapi import APIRouter, Depends, BackgroundTasks, HTTPException, status, Query
-from pydantic import BaseModel, Field
 from typing import Any, Optional
-from structlog import get_logger
+
 from agents.runner import agentic_analytics_task_manager
-from .deps import get_current_user
-from gotrue.types import User
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
+from db_models import Repo
 from google.adk.sessions.session import Session
+from gotrue.types import User
+from pydantic import BaseModel, Field
+from structlog import get_logger
+from utils.db_session import get_db
+from utils.github import aclone_repo
+
+from .deps import get_current_user
 
 logger = get_logger()
 
@@ -40,8 +45,8 @@ class AgentResponse(BaseModel):
 async def get_current_user_id(
     authorization: Optional[str] = Depends(lambda: None),
 ) -> str:
-    from supabase import Client, create_client
     from config import config
+    from supabase import Client, create_client
 
     supabase: Client = create_client(
         config.supabase_url, config.supabase_service_role_key
@@ -118,13 +123,44 @@ async def create_task(
     request: AgentRequest,
     background_tasks: BackgroundTasks,
     user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
+    repo_name = request.message  # TODO: structure the request message
+    repo_path = await aclone_repo(repo_name)
+
+    context = {
+        **request.context,
+        "repo_path": repo_path,
+        "repo_name": repo_name,
+    }
+    session = await agentic_analytics_task_manager.create_session(
+        context=context, session_id=request.session_id
+    )
+    repo = (
+        db.query(Repo).filter(Repo.name == repo_name, Repo.user_id == user.id).first()
+    )
+    if not repo:
+        repo = Repo(
+            name=repo_name,
+            user_id=user.id,
+            url=f"https://github.com/{repo_name}",
+            session_id=session.id,
+        )
+        db.add(repo)
+        db.commit()
+    else:
+        repo.url = f"https://github.com/{repo_name}"
+        repo.session_id = session.id
+        db.commit()
+
+    context["repo_id"] = repo.id
+
     try:
         background_tasks.add_task(
             agentic_analytics_task_manager.execute,
-            request.message,
-            request.context,
-            request.session_id,
+            repo_path,
+            context,
+            request.session_id or session.id,
         )
         response = {
             "status": "success",

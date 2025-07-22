@@ -13,6 +13,7 @@ import {
     type UserSession,
     type UserSessionResponse
 } from '../types/api';
+import type { DetectedEvent } from '../api';
 
 // API Service class for GitHub related endpoints
 export class GithubService {
@@ -30,7 +31,7 @@ export class GithubService {
             url: '/github/repos'
         });
     }
-    
+
     static getAllRepos(): Promise<GithubRepo[]> {
         return createAPIRequest<GithubRepo[]>({
             method: 'GET',
@@ -161,6 +162,13 @@ export class RepoService {
                 'Content-Type': 'multipart/form-data'
             }
         }).then(response => response.data);
+    }
+
+    static getDetectedEvents(repoId: string): Promise<DetectedEvent[]> {
+        return createAPIRequest<DetectedEvent[]>({
+            method: 'GET',
+            url: `/repo/${repoId}/detected-events`
+        });
     }
 }
 

@@ -1,12 +1,11 @@
-import { useState, useRef, useEffect } from 'react'
-import useUserSessions from '../../hooks/use-user-sessions'
-import { useUserContext } from '../../hooks/use-user-context'
-import type { TrackingPlanEvent } from '../../api'
-import DetectedEventsSection from './detect-events'
-import { useDeleteRepo, useRepos } from '../../hooks/use-repo'
-import { useGithubRepoInfo } from '../../hooks/use-github'
-import { useTalkToAgent, useUserSession } from '../../hooks/use-agent'
 import { Circle, CircleCheck, LoaderCircle, RefreshCw } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { useTalkToAgent, useUserSession } from '../../hooks/use-agent'
+import { useGithubRepoInfo } from '../../hooks/use-github'
+import { useDeleteRepo, useDetectedEvents, useRepos } from '../../hooks/use-repo'
+import { useUserContext } from '../../hooks/use-user-context'
+import useUserSessions from '../../hooks/use-user-sessions'
+import DetectedEventsSection from './detect-events'
 
 // Define type for session event
 interface SessionEvent {
@@ -47,16 +46,6 @@ const getAuthorColor = (author: string): string => {
     return 'bg-gray-400'
 }
 
-// Type guard for tracking_plan
-function hasTrackingPlan(state: unknown): state is { tracking_plans: TrackingPlanEvent[] } {
-    return (
-        typeof state === 'object' &&
-        state !== null &&
-        'tracking_plans' in state &&
-        Array.isArray((state as { tracking_plans: unknown }).tracking_plans)
-    )
-}
-
 const Home = () => {
     const { user } = useUserContext()
     useUserSessions(user?.id ?? '')
@@ -82,6 +71,7 @@ const Home = () => {
         isLoading: isSessionLoading,
         refetch: refetchSession,
     } = useUserSession(selectedRepo?.session_id ?? '')
+    const { data: detectedEvents } = useDetectedEvents(selectedRepo?.id?.toString() ?? '')
     const { mutate: talkToAgent } = useTalkToAgent()
 
     // Scroll to bottom on new events
@@ -203,11 +193,13 @@ const Home = () => {
                                         <path d="M12 0.297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.387 0.6 0.113 0.82-0.258 0.82-0.577 0-0.285-0.011-1.04-0.017-2.04-3.338 0.726-4.042-1.416-4.042-1.416-0.546-1.387-1.333-1.756-1.333-1.756-1.089-0.745 0.083-0.729 0.083-0.729 1.205 0.084 1.84 1.237 1.84 1.237 1.07 1.834 2.809 1.304 3.495 0.997 0.108-0.775 0.418-1.305 0.762-1.605-2.665-0.305-5.466-1.334-5.466-5.931 0-1.311 0.469-2.381 1.236-3.221-0.124-0.303-0.535-1.523 0.117-3.176 0 0 1.008-0.322 3.301 1.23 0.957-0.266 1.983-0.399 3.003-0.404 1.02 0.005 2.047 0.138 3.006 0.404 2.291-1.553 3.297-1.23 3.297-1.23 0.653 1.653 0.242 2.873 0.118 3.176 0.77 0.84 1.235 1.91 1.235 3.221 0 4.609-2.803 5.624-5.475 5.921 0.43 0.371 0.823 1.102 0.823 2.222 0 1.606-0.015 2.898-0.015 3.293 0 0.322 0.216 0.694 0.825 0.576 4.765-1.589 8.199-6.085 8.199-11.386 0-6.627-5.373-12-12-12z" />
                                     </svg>
                                 </a>
-                                {session?.state?.status === "completed" ? (
+                                {session?.state?.status &&
+                                    Object.values(session.state.status).every(v => v === "completed") ? (
                                     <span title="Completed" className="ml-2 text-success">
                                         <CircleCheck className="w-5 h-5" color="green" />
                                     </span>
-                                ) : session?.state?.status === "not_started" || session?.state?.status === "failed" ? (
+                                ) : session?.state?.status &&
+                                    Object.values(session.state.status).some(v => v === "failed") ? (
                                     <span
                                         className="ml-2 text-error animate-pulse tooltip"
                                         data-tip={session?.state?.error || "Not Started"}
@@ -420,14 +412,7 @@ const Home = () => {
                             </section>
                             {/* Tracking Plan Section */}
                             <section className="bg-base-100 rounded-lg p-4 shadow flex flex-col max-h-[400px] overflow-y-auto">
-                                <DetectedEventsSection
-                                    events={
-                                        hasTrackingPlan(session?.state)
-                                            ? session?.state?.tracking_plans
-                                            : []
-                                    }
-                                    repoUrl={selectedRepo.url + '/blob/main/'}
-                                />
+                                <DetectedEventsSection events={detectedEvents ?? []} repoUrl={selectedRepo.url + '/blob/main/'} />
                             </section>
                         </div>
                     </div>
