@@ -81,6 +81,17 @@ export const cloneGithubRepo = async (repoName: string) => {
     return res.json();
 };
 
+export type DetectedEvent = {
+    name: string;
+    description: string;
+    location: string;
+    properties: {
+        property_name: string;
+        property_type: string;
+        property_description: string;
+    }[];
+}
+
 export type TrackingPlanEvent = {
     id?: string;
     repo_id: string;

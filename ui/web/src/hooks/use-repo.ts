@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { RepoService } from '../services/api.service';
 import { type Repo, type TrackingPlanEvent } from '../types/api';
 import { useApiQuery, useApiMutation } from './use-api';
+import type { DetectedEvent } from '../api';
 
 /**
  * Hook for fetching repositories
@@ -122,4 +123,12 @@ export function useImportTrackingPlanEvents() {
       }
     }
   );
-} 
+}
+
+export function useDetectedEvents(repoId: string, enabled = true) {
+  return useApiQuery<DetectedEvent[]>(
+    ['repo', repoId, 'detected-events'],
+    () => RepoService.getDetectedEvents(repoId),
+    { enabled: enabled && !!repoId }
+  );
+}

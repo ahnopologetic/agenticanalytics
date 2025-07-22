@@ -1,11 +1,13 @@
 import csv
 import io
 from datetime import datetime
+import json
 from typing import List, Optional
 from uuid import UUID
+from agents.runner import agentic_analytics_task_manager
 
 from db_models import Plan, Repo, UserEvent
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastapi.responses import StreamingResponse
 from gotrue.types import User
 from pydantic import BaseModel
@@ -167,6 +169,47 @@ def delete_repo(repo_id: str, db: Session = Depends(get_db)):
     db.delete(db_repo)
     db.commit()
     return None
+
+
+@router.get("/{repo_id}/detected-events")
+async def get_detected_events(
+    repo_id: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)
+):
+    # TODO: pagination
+    repo = db.query(Repo).filter(Repo.id == repo_id, Repo.user_id == user.id).first()
+    if not repo:
+        raise HTTPException(status_code=404, detail="Repo not found")
+
+    session = await agentic_analytics_task_manager.get_session(
+        repo.session_id, user_id=user.id
+    )
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    tracking_plan_json_path = session.state.get("tracking_plan_json_path", "")
+    if not tracking_plan_json_path:
+        raise HTTPException(status_code=404, detail="Tracking plan not found")
+
+    tracking_plan_data = []
+    with open(tracking_plan_json_path, "r") as f:
+        for line in f:
+            try:
+                tracking_plan_data.append(json.loads(line))
+            except json.JSONDecodeError:
+                continue
+
+    events = tracking_plan_data
+    seen = set()
+    deduped_events = []
+    for event in events:
+        event_key = (
+            event.get("name") if "name" in event else json.dumps(event, sort_keys=True)
+        )
+        if event_key not in seen:
+            seen.add(event_key)
+            deduped_events.append(event)
+
+    return deduped_events
 
 
 @router.get("/repo/{repo_id}/plans", response_model=List[PlanResponse])
@@ -379,7 +422,6 @@ def import_events_for_plan(
     plan_id: str, db: Session = Depends(get_db), file: bytes = None
 ):
     # This expects a CSV file upload via form-data with key 'file'
-
 
     class DummyRequest:
         pass

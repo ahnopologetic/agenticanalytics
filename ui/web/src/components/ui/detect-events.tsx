@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { TrackingPlanEvent } from '../../api'
+import type { DetectedEvent } from '../../api'
 
 const locationToPermlink = (location: string) => {
     const line = location.split(':')[1]
@@ -7,13 +7,13 @@ const locationToPermlink = (location: string) => {
     return `${file}#L${line}`
 }
 
-const DetectedEventsSection = ({ events, repoUrl }: { events: TrackingPlanEvent[], repoUrl?: string }) => {
+const DetectedEventsSection = ({ events, repoUrl }: { events: DetectedEvent[], repoUrl?: string }) => {
     const [openIdx, setOpenIdx] = useState<number | null>(null)
     const [search, setSearch] = useState('')
     const filtered = events.filter(e =>
-        e.event_name.toLowerCase().includes(search.toLowerCase()) ||
-        e.context.toLowerCase().includes(search.toLowerCase()) ||
-        e.file_path.toLowerCase().includes(search.toLowerCase())
+        e.name.toLowerCase().includes(search.toLowerCase()) ||
+        e.description.toLowerCase().includes(search.toLowerCase()) ||
+        e.location.toLowerCase().includes(search.toLowerCase())
     )
     return (
         <>
@@ -36,7 +36,7 @@ const DetectedEventsSection = ({ events, repoUrl }: { events: TrackingPlanEvent[
                 {filtered.map((event, idx) => {
                     const isOpen = openIdx === idx
                     return (
-                        <div key={event.event_name + event.file_path} className="border rounded-lg bg-base-100 shadow-sm">
+                        <div key={event.name + event.location} className="border rounded-lg bg-base-100 shadow-sm">
                             <button
                                 className="w-full flex items-center gap-3 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/40 transition"
                                 onClick={() => setOpenIdx(isOpen ? null : idx)}
@@ -46,18 +46,18 @@ const DetectedEventsSection = ({ events, repoUrl }: { events: TrackingPlanEvent[
                                 <div className="flex-1 text-left">
                                     <div className="font-semibold text-base-content line-clamp-1 flex items-center gap-2">
                                         <span className="inline-block w-2 h-2 rounded-full bg-primary mr-1" />
-                                        {event.event_name}
+                                        {event.name}
                                     </div>
-                                    <div className="text-base-content/70 text-sm line-clamp-1">{event.context}</div>
+                                    <div className="text-base-content/70 text-sm line-clamp-1">{event.description}</div>
                                 </div>
                                 <div className="hidden md:block text-xs text-base-content/50 ml-2 whitespace-nowrap max-w-xs truncate">
                                     <span className="inline-flex items-center gap-1">
                                         <svg className="w-4 h-4 inline-block text-base-content/40" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V7M16 3v4M8 3v4m-5 4h18" /></svg>
-                                        <span className="font-mono">{event.file_path.split('/').slice(-1)[0]}</span>
+                                        <span className="font-mono">{event.location.split('/').slice(-1)[0]}</span>
                                     </span>
                                 </div>
                                 <a
-                                    href={repoUrl + locationToPermlink(event.file_path)}
+                                    href={repoUrl + locationToPermlink(event.location)}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="btn btn-xs btn-ghost ml-2"
@@ -77,12 +77,12 @@ const DetectedEventsSection = ({ events, repoUrl }: { events: TrackingPlanEvent[
                                 {isOpen && (
                                     <div>
                                         <div className="mb-2">
-                                            <span className="font-semibold">Context:</span> <span className="text-base-content/80">{event.context}</span>
+                                            <span className="font-semibold">Context:</span> <span className="text-base-content/80">{event.description}</span>
                                         </div>
                                         <div className="mb-2">
-                                            <span className="font-semibold">Location:</span> <span className="font-mono text-base-content/70">{event.file_path}</span>
+                                            <span className="font-semibold">Location:</span> <span className="font-mono text-base-content/70">{event.location}</span>
                                             <a
-                                                href={repoUrl + locationToPermlink(event.file_path)}
+                                                href={repoUrl + locationToPermlink(event.location)}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="ml-2 text-primary underline text-xs"
@@ -92,21 +92,23 @@ const DetectedEventsSection = ({ events, repoUrl }: { events: TrackingPlanEvent[
                                         </div>
                                         <div>
                                             <span className="font-semibold">Properties:</span>
-                                            {Object.keys(event.tags).length === 0 ? (
+                                            {Object.keys(event.properties).length === 0 ? (
                                                 <span className="italic text-base-content/50 ml-2">No properties collected</span>
                                             ) : (
                                                 <table className="table table-xs mt-2">
                                                     <thead>
                                                         <tr>
                                                             <th>Property</th>
-                                                            <th>Value</th>
+                                                            <th>Type</th>
+                                                            <th>Description</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody>
-                                                        {Object.entries(event.tags).map(([key, value]) => (
-                                                            <tr key={key}>
-                                                                <td className="font-mono text-xs">{key}</td>
-                                                                <td className="text-xs">{String(value)}</td>
+                                                        {event.properties.map((value) => (
+                                                            <tr key={value.property_name}>
+                                                                <td className="font-mono text-xs">{value.property_name}</td>
+                                                                <td className="text-xs">{value.property_type}</td>
+                                                                <td className="text-xs">{value.property_description}</td>
                                                             </tr>
                                                         ))}
                                                     </tbody>
