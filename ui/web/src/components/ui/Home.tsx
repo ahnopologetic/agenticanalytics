@@ -1,12 +1,11 @@
-import { useState, useRef, useEffect } from 'react'
-import useUserSessions from '../../hooks/use-user-sessions'
-import { useUserContext } from '../../hooks/use-user-context'
-import type { TrackingPlanEvent } from '../../api'
-import DetectedEventsSection from './detect-events'
-import { useDeleteRepo, useDetectedEvents, useRepos } from '../../hooks/use-repo'
-import { useGithubRepoInfo } from '../../hooks/use-github'
-import { useTalkToAgent, useUserSession } from '../../hooks/use-agent'
 import { Circle, CircleCheck, LoaderCircle, RefreshCw } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { useTalkToAgent, useUserSession } from '../../hooks/use-agent'
+import { useGithubRepoInfo } from '../../hooks/use-github'
+import { useDeleteRepo, useDetectedEvents, useRepos } from '../../hooks/use-repo'
+import { useUserContext } from '../../hooks/use-user-context'
+import useUserSessions from '../../hooks/use-user-sessions'
+import DetectedEventsSection from './detect-events'
 
 // Define type for session event
 interface SessionEvent {
@@ -47,16 +46,6 @@ const getAuthorColor = (author: string): string => {
     return 'bg-gray-400'
 }
 
-// Type guard for tracking_plan
-function hasTrackingPlan(state: unknown): state is { tracking_plans: TrackingPlanEvent[] } {
-    return (
-        typeof state === 'object' &&
-        state !== null &&
-        'tracking_plans' in state &&
-        Array.isArray((state as { tracking_plans: unknown }).tracking_plans)
-    )
-}
-
 const Home = () => {
     const { user } = useUserContext()
     useUserSessions(user?.id ?? '')
@@ -82,7 +71,7 @@ const Home = () => {
         isLoading: isSessionLoading,
         refetch: refetchSession,
     } = useUserSession(selectedRepo?.session_id ?? '')
-    const { data: detectedEvents, isLoading: isDetectedEventsLoading } = useDetectedEvents(selectedRepo?.id?.toString() ?? '')
+    const { data: detectedEvents } = useDetectedEvents(selectedRepo?.id?.toString() ?? '')
     const { mutate: talkToAgent } = useTalkToAgent()
 
     // Scroll to bottom on new events
