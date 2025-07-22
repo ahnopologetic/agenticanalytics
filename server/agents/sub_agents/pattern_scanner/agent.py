@@ -42,6 +42,10 @@ List up all the relevant patterns you found. Patterns with the same namespace sh
 Your job is to find event tracking patterns in the codebase, not `identify` or `people` codes which are used for other purposes.
 Our target usually comes in a pair of event name and event properties.
 
+Besides, focus on pulling out as many patterns as possible. Breadth first search is preferred.
+When you find a pattern, you should also find the patterns that are related to it.
+Use ripgrep to find the relevant patterns.
+
 </special_instructions>
 
 Show the list of patterns you found in json list format. If you cannot find any patterns, return an empty list.
@@ -65,24 +69,6 @@ Show the list of patterns you found in json list format. If you cannot find any 
 
 """
 
-"""
-<tracking_plan>
-Use the following schema to write the tracking plan:
-
-<schema>
-class AnalyticsTrackEvent(BaseModel):
-    name: str = Field(description="The name of the event")
-    properties: dict | list | None = Field(description="The properties of the event")
-    location: str = Field(description="The location of the event in the codebase", example="src/components/Button.tsx:10")
-
-class AnalyticsTrackPlan(BaseModel):
-    events: list[AnalyticsTrackEvent] = Field(description="The events to track")
-</schema>
-
-Make sure the output is in JSON format and is valid against the schema.
-</tracking_plan>
-
-"""
 
 pattern_scanner_agent = LlmAgent(
     name="pattern_scanner",
