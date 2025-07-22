@@ -55,6 +55,7 @@ class MainAgentTaskManager:
                     "status": "not_started",
                     "user_id": user_id,
                     "session_id": session_id,
+                    **context,
                 },
             )
             session_id = session.id
@@ -127,7 +128,7 @@ class MainAgentTaskManager:
             user_id=context.get("user_id", "default_user_id"),
             session_id=session_id,
             state={
-                "status": "not_started",
+                "status": {},
                 "user_id": context.get("user_id", "default_user_id"),
                 "session_id": session_id,
             },

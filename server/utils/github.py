@@ -5,7 +5,6 @@ from typing import Optional
 import git
 import httpx
 import jwt
-from tenacity import retry, stop_after_attempt, wait_exponential
 from config import config
 from fastapi import HTTPException
 from git import Repo
@@ -96,7 +95,7 @@ async def get_remote_default_branch(repo_url: str) -> Optional[str]:
         return None
 
     except Exception as e:
-        logger.error("Error getting remote default branch", error=e)
+        logger.warning("Error getting remote default branch", error=e)
         return None
 
 
@@ -117,38 +116,41 @@ async def aclone_repository(
         HTTPException - if the repository cannot be cloned
 
     """
+
+    repo_path = await aclone_repo(repo_name, branch)
+    logger.info("Cloned repository", repo_path=repo_path, branch=branch or "default")
+    tool_context.state["git_repository_path"] = repo_path
+    tool_context.state["status"] = "cloned"
+    return repo_path
+
+
+async def aclone_repo(repo_name: str, branch: Optional[str] = None) -> str:
+    """
+    Clone a GitHub repository and return the path to the cloned repository.
+    """
     parts = repo_name.split("/")
     if len(parts) != 2 or not parts[0] or not parts[1]:
-        raise HTTPException(
-            status_code=400,
-            detail="Repository name must be in the format of 'owner/repo'",
-        )
+        raise ValueError("Repository name must be in the format of 'owner/repo'")
 
-    if not branch:
-        default_branch = await get_remote_default_branch(
-            f"https://github.com/{repo_name}.git"
-        )
-        logger.debug("Default branch", default_branch=default_branch)
-        branch = default_branch
+    default_branch = await get_remote_default_branch(
+        f"https://github.com/{parts[0]}/{parts[1]}.git"
+    )
+    logger.debug("Default branch", default_branch=default_branch)
+    branch = default_branch
 
     installation_token = await get_installation_token()
     logger.debug("Installation token", installation_token=installation_token)
     temp_dir = tempfile.mkdtemp()
 
-    repo_url = f"https://x-access-token:{installation_token}@github.com/{repo_name}.git"
-    repo_path = temp_dir
+    repo_url = f"https://x-access-token:{installation_token}@github.com/{parts[0]}/{parts[1]}.git"
 
     # Clone the repository with specific branch if provided, otherwise use default branch
     if branch:
         repo = Repo.clone_from(repo_url, temp_dir, branch=branch)
     else:
         repo = Repo.clone_from(repo_url, temp_dir)
-        repo_path = repo.working_dir
 
-    logger.info("Cloned repository", repo_path=repo_path, branch=branch or "default")
-    tool_context.state["git_repository_path"] = repo_path
-    tool_context.state["status"] = "cloned"
-    return str(repo_path)
+    return str(repo.working_dir)
 
 
 async def apull_repository(repo_path: str) -> str:

@@ -1,6 +1,7 @@
 import json
 import os
 from google.adk.agents import LlmAgent
+from google.adk.agents.callback_context import CallbackContext
 from google.genai.types import GenerateContentConfig
 
 from agents.shared.tools import (
@@ -62,7 +63,35 @@ def convert_analyze_tracking_output_to_tracking_plan(
     return f"Tracking plan written to {target_file_path} ({len(tracking_plan)} events)"
 
 
-# TODO: combine json nl files into a single file, and sync with database
+def _before_agent_callback(callback_context: CallbackContext) -> None:
+    state = callback_context.state
+    state.update(
+        {
+            "status": {
+                "pattern_scanning": "completed",
+                "tracking_plan_writing": "started",
+            }
+        }
+    )
+
+
+def _after_agent_callback(callback_context: CallbackContext) -> None:
+    state = callback_context.state
+    if state["tracking_plan_json_path"] is None:
+        state.update({"status": "failed", "reason": "Unexpected error"})
+    elif state["tracking_plan_json_path"] == "":
+        state.update({"status": "failed", "reason": "No tracking plan found"})
+    else:
+        state.update(
+            {
+                "status": {
+                    "pattern_scanning": "completed",
+                    "tracking_plan_writing": "completed",
+                },
+            }
+        )
+
+
 tracking_plan_writer_agent = LlmAgent(
     name="tracking_plan_writer",
     description="Analytics Tracking Plan Automation Assistant",
@@ -70,6 +99,7 @@ tracking_plan_writer_agent = LlmAgent(
     instruction="""
     You are an expert in analytics tracking plan automation.
     You are given a list of patterns and you need to read the codebase and write a tracking plan for it.
+    Return the path to the tracking plan file you created without any other text.
 
     <general_instructions>
     1. Understand the project and its dependencies.
@@ -172,6 +202,14 @@ tracking_plan_writer_agent = LlmAgent(
         returns:
             - The tracking plan.
     </tools>
+
+    <output>
+    Return the path to the tracking plan file you created without any other text.
+
+    <example>
+    /absolute/path/to/aatx_<project_name>.json
+    </example>
+    </output>
     """,
     tools=[
         lc_shell_tool,
@@ -180,6 +218,9 @@ tracking_plan_writer_agent = LlmAgent(
         edit_file,
         convert_analyze_tracking_output_to_tracking_plan,
     ],
+    before_agent_callback=_before_agent_callback,
+    after_agent_callback=_after_agent_callback,
+    output_key="tracking_plan_json_path",
     generate_content_config=GenerateContentConfig(
         temperature=0.0,
     ),

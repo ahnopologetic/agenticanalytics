@@ -11,7 +11,14 @@ def _after_agent_callback(callback_context: CallbackContext) -> None:
     elif state["patterns"] == []:
         state.update({"status": "failed", "reason": "No patterns found"})
     else:
-        state.update({"status": "completed"})
+        state.update(
+            {
+                "status": {
+                    "pattern_scanning": "completed",
+                    "tracking_plan_writing": "not_started",
+                }
+            }
+        )
 
 
 INSTRUCTION = """
