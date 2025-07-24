@@ -7,6 +7,24 @@ import { useUserContext } from '../../hooks/use-user-context'
 import useUserSessions from '../../hooks/use-user-sessions'
 import DetectedEventsSection from './detect-events'
 
+// --- Add: Query param helpers ---
+function getQueryParam(name: string): string | null {
+    if (typeof window === 'undefined') return null
+    const params = new URLSearchParams(window.location.search)
+    return params.get(name)
+}
+function setQueryParam(name: string, value: string | null) {
+    if (typeof window === 'undefined') return
+    const url = new URL(window.location.href)
+    if (value) {
+        url.searchParams.set(name, value)
+    } else {
+        url.searchParams.delete(name)
+    }
+    window.history.replaceState({}, '', url.toString())
+}
+// ---
+
 // Define type for session event
 interface SessionEvent {
     id?: string
@@ -49,7 +67,27 @@ const getAuthorColor = (author: string): string => {
 const Home = () => {
     const { user } = useUserContext()
     useUserSessions(user?.id ?? '')
-    const [selectedRepoId, setSelectedRepoId] = useState<string | null>(null)
+
+    // --- Use query param for selectedRepoId ---
+    const [selectedRepoId, setSelectedRepoIdState] = useState<string | null>(() => {
+        // On first render, get from query param
+        return getQueryParam('repo') || null
+    })
+    // Wrap setSelectedRepoId to also update query param
+    const setSelectedRepoId = (id: string | null) => {
+        setSelectedRepoIdState(id)
+        setQueryParam('repo', id)
+    }
+    // If user navigates with browser back/forward, update state from query param
+    useEffect(() => {
+        const onPopState = () => {
+            setSelectedRepoIdState(getQueryParam('repo') || null)
+        }
+        window.addEventListener('popstate', onPopState)
+        return () => window.removeEventListener('popstate', onPopState)
+    }, [])
+    // ---
+
     const activityEndRef = useRef<HTMLDivElement>(null)
     const [openEventIds, setOpenEventIds] = useState<(string | number)[]>([])
     const [searchTerm, setSearchTerm] = useState('')
@@ -115,17 +153,21 @@ const Home = () => {
         deleteRepo(selectedRepo.id.toString())
     }
 
-    const handleRescanRepo = () => {
+    const handleRescanRepo = (closeDropdown?: () => void) => {
         if (!selectedRepo) {
-            return
+            return;
         }
         talkToAgent({
             message: selectedRepo.name,
             context: {
                 user_id: user?.id ?? '',
             }
-        })
-        refetchSession()
+        });
+        refetchSession();
+        if (typeof closeDropdown === 'function') {
+            closeDropdown();
+        }
+        window.location.reload();
     }
 
     const handleRefreshSession = () => {
