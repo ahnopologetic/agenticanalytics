@@ -365,7 +365,12 @@ const Home = () => {
                                                 </button>
                                             </li>
                                             <li>
-                                                <button className="flex items-center gap-2 w-full" onClick={handleRescanRepo}>
+                                                <button className="flex items-center gap-2 w-full" onClick={() => handleRescanRepo(() => {
+                                                    const dropdown = document.querySelector('.dropdown') as HTMLDivElement
+                                                    if (dropdown) {
+                                                        dropdown.classList.remove('dropdown-open')
+                                                    }
+                                                })}>
                                                     <svg
                                                         xmlns="http://www.w3.org/2000/svg"
                                                         width="18"
