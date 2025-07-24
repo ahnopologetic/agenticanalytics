@@ -7,7 +7,7 @@ from google.adk.artifacts import InMemoryArtifactService, GcsArtifactService
 from google.adk.sessions import InMemorySessionService, DatabaseSessionService
 from google.genai import types as adk_types
 from structlog import get_logger
-from config import config
+from config import ServerConfig, config as default_config
 
 from agents.agent import root_agent
 
@@ -15,7 +15,10 @@ logger = get_logger()
 
 
 class MainAgentTaskManager:
-    def __init__(self, agent: Agent, app_name: str):
+    def __init__(self, agent: Agent, app_name: str, config: ServerConfig | None = None):
+        if config is None:
+            config = default_config
+
         self.agent = agent
         self.session_service = (
             InMemorySessionService()
@@ -135,4 +138,12 @@ class MainAgentTaskManager:
         )
 
 
-agentic_analytics_task_manager = MainAgentTaskManager(root_agent, "agentic_analytics")
+def get_agentic_analytics_task_manager(config: ServerConfig | None = None):
+    print(f"config: {config}")
+    if config is None:
+        config = default_config
+
+    return MainAgentTaskManager(root_agent, "agentic_analytics", config)
+
+
+agentic_analytics_task_manager = get_agentic_analytics_task_manager()

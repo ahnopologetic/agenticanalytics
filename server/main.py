@@ -10,6 +10,8 @@ from routers.github import router as github_router
 from routers.auth import router as auth_router
 from routers.agent import router as agent_router
 from routers.repo import router as repo_router
+from routers.plans import router as plans_router
+from routers.events import router as events_router
 
 logger = get_logger()
 
@@ -30,5 +32,7 @@ app.include_router(github_router, prefix="/github")
 app.include_router(auth_router, prefix="/auth")
 app.include_router(agent_router, prefix="/agent")
 app.include_router(repo_router, prefix="/repo")
+app.include_router(plans_router, prefix="/plans")
+app.include_router(events_router, prefix="/events")
 
 Base.metadata.create_all(bind=engine)
