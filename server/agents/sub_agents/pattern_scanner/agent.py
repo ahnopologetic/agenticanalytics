@@ -7,9 +7,25 @@ from google.genai.types import GenerateContentConfig
 def _after_agent_callback(callback_context: CallbackContext) -> None:
     state = callback_context.state
     if state["patterns"] is None:
-        state.update({"status": "failed", "reason": "Unexpected error"})
+        state.update(
+            {
+                "status": {
+                    "pattern_scanning": "failed",
+                    "tracking_plan_writing": "not_started",
+                },
+                "reason": "Unexpected error",
+            }
+        )
     elif state["patterns"] == []:
-        state.update({"status": "failed", "reason": "No patterns found"})
+        state.update(
+            {
+                "status": {
+                    "pattern_scanning": "failed",
+                    "tracking_plan_writing": "not_started",
+                },
+                "reason": "No patterns found",
+            }
+        )
     else:
         state.update(
             {

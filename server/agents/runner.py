@@ -131,7 +131,10 @@ class MainAgentTaskManager:
             user_id=context.get("user_id", "default_user_id"),
             session_id=session_id,
             state={
-                "status": {},
+                "status": {
+                    "pattern_scanning": "not_started",
+                    "tracking_plan_writing": "not_started",
+                },
                 "user_id": context.get("user_id", "default_user_id"),
                 "session_id": session_id,
             },
