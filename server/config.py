@@ -6,7 +6,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class ServerConfig(BaseSettings):
-    env: Literal["dev", "prod"] = Field(..., env="ENV")
+    env: Literal["dev", "prod", "test"] = Field(..., env="ENV")
     supabase_url: str = Field(..., env="SUPABASE_URL")
     supabase_service_role_key: str = Field(..., env="SUPABASE_SERVICE_ROLE_KEY")
     github_app_id: str = Field(..., env="GITHUB_APP_ID")

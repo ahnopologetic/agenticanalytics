@@ -8,13 +8,41 @@ from sqlalchemy import (
     DateTime,
     ARRAY,
     UniqueConstraint,
+    Table,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import declarative_base, relationship
+from sqlalchemy.types import TypeDecorator, TEXT
 import uuid
 from datetime import datetime, timezone
+import json
 
 Base = declarative_base()
+
+
+class TagsType(TypeDecorator):
+    cache_ok = True  # for SQLAlchemy 1.4+ to avoid warnings
+    impl = ARRAY(String)
+
+    def load_dialect_impl(self, dialect):
+        if dialect.name == "postgresql":
+            return dialect.type_descriptor(ARRAY(String))
+        else:
+            return dialect.type_descriptor(TEXT())
+
+    def process_bind_param(self, value, dialect):
+        if dialect.name == "postgresql":
+            return value
+        if value is None:
+            return None
+        return json.dumps(value)
+
+    def process_result_value(self, value, dialect):
+        if dialect.name == "postgresql":
+            return value
+        if value is None:
+            return None
+        return json.loads(value)
 
 
 def utcnow():
@@ -33,6 +61,24 @@ class Profile(Base):
     repos = relationship("Repo", back_populates="user")
 
 
+class PlanRepo(Base):
+    __tablename__ = "plan_repos"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    plan_id = Column(
+        UUID(as_uuid=True), ForeignKey("plans.id", ondelete="CASCADE"), nullable=False
+    )
+    repo_id = Column(
+        UUID(as_uuid=True), ForeignKey("repos.id", ondelete="CASCADE"), nullable=False
+    )
+    created_at = Column(DateTime, default=utcnow)
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
+
+    __table_args__ = (UniqueConstraint("plan_id", "repo_id", name="uq_plan_repo"),)
+
+    plan = relationship("Plan", back_populates="plan_repos")
+    repo = relationship("Repo", back_populates="plan_repos")
+
+
 class Repo(Base):
     __tablename__ = "repos"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -46,15 +92,19 @@ class Repo(Base):
     updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
 
     user = relationship("Profile", back_populates="repos")
-    events = relationship("UserEvent", back_populates="repo")
+    events = relationship(
+        "UserEvent", back_populates="repo", cascade="all, delete-orphan"
+    )
     scan_jobs = relationship("ScanJob", back_populates="repo")
-    plans = relationship("Plan", back_populates="repo")
+    plan_repos = relationship(
+        "PlanRepo", back_populates="repo", cascade="all, delete-orphan"
+    )
+    plans = relationship("Plan", secondary="plan_repos", back_populates="repos")
 
 
 class Plan(Base):
     __tablename__ = "plans"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    repo_id = Column(UUID(as_uuid=True), ForeignKey("repos.id", ondelete="CASCADE"))
     name = Column(String, nullable=False)
     description = Column(Text)
     status = Column(String, default="active")
@@ -63,8 +113,10 @@ class Plan(Base):
     created_at = Column(DateTime, default=utcnow)
     updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
 
-    repo = relationship("Repo", back_populates="plans")
-    events = relationship("UserEvent", back_populates="plan")
+    plan_repos = relationship(
+        "PlanRepo", back_populates="plan", cascade="all, delete-orphan"
+    )
+    repos = relationship("Repo", secondary="plan_repos", back_populates="plans")
 
 
 class UserEvent(Base):
@@ -74,14 +126,13 @@ class UserEvent(Base):
     repo_id = Column(UUID(as_uuid=True), ForeignKey("repos.id", ondelete="CASCADE"))
     event_name = Column(String, nullable=False)
     context = Column(Text)
-    tags = Column(ARRAY(String))
+    tags = Column(TagsType)
     file_path = Column(String)
     line_number = Column(Integer)
     created_at = Column(DateTime, default=utcnow)
     updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
 
     repo = relationship("Repo", back_populates="events")
-    plan = relationship("Plan", back_populates="events")
     annotations = relationship("EventAnnotation", back_populates="event")
 
 

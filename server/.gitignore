@@ -184,3 +184,5 @@ cython_debug/
 __pycache__/
 cloned_repo/
 samples/
+
+.vscode/

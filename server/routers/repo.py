@@ -1,6 +1,6 @@
 import csv
 import io
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 from typing import List, Optional
 from uuid import UUID
@@ -10,7 +10,7 @@ from db_models import Plan, Repo, UserEvent
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastapi.responses import StreamingResponse
 from gotrue.types import User
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from routers.deps import get_current_user
 from sqlalchemy.orm import Session
 from utils.db_session import get_db
@@ -22,8 +22,8 @@ class RepoCreate(BaseModel):
     name: str
     description: str
     url: str
-    created_at: datetime
-    updated_at: datetime
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class RepoUpdate(BaseModel):
@@ -251,7 +251,7 @@ def get_plan(plan_id: str, db: Session = Depends(get_db)):
 
 @router.post("/plans", response_model=PlanResponse, status_code=status.HTTP_201_CREATED)
 def create_plan(plan: PlanCreate, db: Session = Depends(get_db)):
-    db_plan = Plan(**plan.dict())
+    db_plan = Plan(**plan.model_dump())
     db.add(db_plan)
     db.commit()
     db.refresh(db_plan)
@@ -324,7 +324,7 @@ def list_events_for_plan(plan_id: str, db: Session = Depends(get_db)):
     "/events", response_model=UserEventResponse, status_code=status.HTTP_201_CREATED
 )
 def create_event(event: UserEventCreate, db: Session = Depends(get_db)):
-    db_event = UserEvent(**event.dict())
+    db_event = UserEvent(**event.model_dump())
     db.add(db_event)
     db.commit()
     db.refresh(db_event)
