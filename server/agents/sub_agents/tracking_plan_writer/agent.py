@@ -78,9 +78,15 @@ def _before_agent_callback(callback_context: CallbackContext) -> None:
 def _after_agent_callback(callback_context: CallbackContext) -> None:
     state = callback_context.state
     if state["tracking_plan_json_path"] is None:
-        state.update({"status": "failed", "reason": "Unexpected error"})
-    elif state["tracking_plan_json_path"] == "":
-        state.update({"status": "failed", "reason": "No tracking plan found"})
+        state.update(
+            {
+                "status": {
+                    "pattern_scanning": "completed",
+                    "tracking_plan_writing": "failed",
+                },
+                "reason": "Unexpected error",
+            }
+        )
     else:
         state.update(
             {
