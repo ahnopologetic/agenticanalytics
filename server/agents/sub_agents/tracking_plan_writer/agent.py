@@ -5,6 +5,7 @@ from google.adk.agents.callback_context import CallbackContext
 from google.genai.types import GenerateContentConfig
 
 from agents.shared.tools import (
+    create_temp_dir,
     edit_file,
     lc_shell_tool,
     list_directory,
@@ -113,6 +114,8 @@ tracking_plan_writer_agent = LlmAgent(
         - For known sdk, you can use `analyze-tracking` command to scan the codebase for the tracking events.
         - For unknown sdk, you should use basic linux shell tools (including ripgrep, find, and more advanced tools) to scan the codebase for the tracking events. 
     3. Incrementally write the tracking plan (in json new line format) for the analytics tracking events. 
+        - Create a temporary directory to store the tracking plan files.
+        - Save the tracking plan files to the temporary directory.
         - Create a new file (aatx_<project_name>.json) for each analytics tracking event. Make sure the file name starts with `aatx_` prefix. Keep them in a single file, appending to the file if it already exists.
         - Read current tracking plan and update the tracking plan using the tools provided.
     </general_instructions>
@@ -207,6 +210,9 @@ tracking_plan_writer_agent = LlmAgent(
             - target_file_path: The path to the target file to write the tracking plan to.
         returns:
             - The tracking plan.
+    - create_temp_dir: create a temporary directory. Use this to create a temporary directory to store the tracking plan files.
+        returns:
+            - The path to the temporary directory.
     </tools>
 
     <output>
@@ -223,6 +229,7 @@ tracking_plan_writer_agent = LlmAgent(
         read_file,
         edit_file,
         convert_analyze_tracking_output_to_tracking_plan,
+        create_temp_dir,
     ],
     before_agent_callback=_before_agent_callback,
     after_agent_callback=_after_agent_callback,

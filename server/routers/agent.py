@@ -1,3 +1,4 @@
+import asyncio
 from typing import Any, Optional
 
 from agents.runner import (
@@ -138,7 +139,7 @@ async def run(
 @router.post("/create-task")
 async def create_task(
     body: AgentRequest,
-    background_tasks: BackgroundTasks,
+    # background_tasks: BackgroundTasks,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -175,11 +176,12 @@ async def create_task(
     context["repo_id"] = repo.id
 
     try:
-        background_tasks.add_task(
-            agentic_analytics_task_manager.execute,
-            repo_path,
-            context,
-            body.session_id or session.id,
+        asyncio.create_task(
+            agentic_analytics_task_manager.execute(
+                repo_path,
+                context,
+                body.session_id or session.id,
+            )
         )
         response = {
             "status": "success",

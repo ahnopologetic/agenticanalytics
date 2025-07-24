@@ -76,9 +76,7 @@ def read_file(
         else:
             lines = f.readlines()
             if len(lines) > 250:
-                return "\n".join(
-                    lines[:250] + [f"... {len(lines) - 250} more"]
-                )
+                return "\n".join(lines[:250] + [f"... {len(lines) - 250} more"])
             else:
                 return "\n".join(lines)
 
@@ -121,3 +119,22 @@ def edit_file(path: str, content: str, auto_apply: bool = True) -> str:
         return f"{suggestion}\n\nChanges applied."
     else:
         return suggestion
+
+
+def create_temp_dir() -> str:
+    """
+    Create a temporary directory and return the path.
+    """
+    import tempfile
+
+    return tempfile.mkdtemp()
+
+
+def save_to_supabase_storage(path: str, content: str) -> str:
+    """
+    Save a file to Supabase storage and return the path.
+    """
+    import supabase
+
+    supabase.storage.from_("agentic-analytics").upload(path, content)
+    return f"https://agentic-analytics.supabase.co/storage/v1/object/public/{path}"
