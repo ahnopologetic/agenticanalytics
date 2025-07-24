@@ -55,7 +55,7 @@ export function useUpdatePlan() {
       onSuccess: (data) => {
         queryClient.invalidateQueries({ queryKey: ['plan', data.id] });
         queryClient.invalidateQueries({
-          queryKey: ['plan', 'list', data.repo_id]
+          queryKey: ['plan', 'list', data.id]
         });
       }
     }
@@ -103,7 +103,7 @@ export function useCreatePlanEvent() {
     {
       onSuccess: (data) => {
         queryClient.invalidateQueries({
-          queryKey: ['plan', data.plan_id, 'events']
+          queryKey: ['plan', data.id, 'events']
         });
       }
     }
@@ -121,7 +121,7 @@ export function useUpdatePlanEvent() {
     {
       onSuccess: (data) => {
         queryClient.invalidateQueries({
-          queryKey: ['plan', data.plan_id, 'events']
+          queryKey: ['plan', data.id, 'events']
         });
       }
     }

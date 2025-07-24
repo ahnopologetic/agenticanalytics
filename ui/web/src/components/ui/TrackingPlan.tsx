@@ -14,8 +14,7 @@ import {
 } from '../../api';
 import { useUserContext } from '../../hooks/use-user-context';
 
-const defaultNewEvent = (plan_id: string, repo_id: string): Omit<PlanEvent, 'id' | 'created_at' | 'updated_at'> => ({
-  plan_id,
+const defaultNewEvent = (repo_id: string): Omit<PlanEvent, 'id' | 'created_at' | 'updated_at'> => ({
   repo_id,
   event_name: '',
   context: '',
@@ -180,7 +179,7 @@ const TrackingPlan = () => {
   const handleAdd = async () => {
     if (!selectedPlan) { setError('No plan selected'); return; }
     try {
-      const newEvent = await createPlanEvent(defaultNewEvent(selectedPlan.id, selectedPlan.repo_id));
+      const newEvent = await createPlanEvent(defaultNewEvent(selectedRepo));
       setRowData(data => [...data, newEvent]);
     } catch (e) {
       setError(`Failed to add event: ${e}`);
@@ -288,7 +287,7 @@ const TrackingPlan = () => {
     },
     {
       headerName: 'Delete',
-      field: 'plan_id',
+      field: 'id',
       cellRenderer: (params: ICellRendererParams<PlanEvent>) => (
         <button
           className="btn btn-xs btn-error"
