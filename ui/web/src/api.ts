@@ -260,11 +260,11 @@ export const importTrackingPlanEvents = async (file: File): Promise<TrackingPlan
 
 export type Plan = {
     id: string;
-    repo_id: string;
     name: string;
     description: string;
     status: string;
     version: string;
+    user_id: string;
     import_source: string;
     created_at: string;
     updated_at: string;
@@ -272,7 +272,6 @@ export type Plan = {
 
 export type PlanEvent = {
     id?: string;
-    plan_id: string;
     repo_id: string;
     event_name: string;
     context: string;

@@ -3,18 +3,16 @@ import { AgGridReact } from 'ag-grid-react';
 import type { ColDef, CellValueChangedEvent, ICellRendererParams, ValueFormatterParams, ValueParserParams } from 'ag-grid-community';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-quartz.css';
+import { usePlans, useCreatePlan, usePlan, useExportPlanEvents, useImportPlanEvents } from '../../hooks/use-plan';
 import {
   listRepos,
-  listPlans,
   listPlanEvents,
   createPlanEvent,
   updatePlanEvent,
   deletePlanEvent,
-  exportPlanEvents,
-  importPlanEvents,
-  type Plan,
   type PlanEvent,
 } from '../../api';
+import { useUserContext } from '../../hooks/use-user-context';
 
 const defaultNewEvent = (plan_id: string, repo_id: string): Omit<PlanEvent, 'id' | 'created_at' | 'updated_at'> => ({
   plan_id,
@@ -26,19 +24,95 @@ const defaultNewEvent = (plan_id: string, repo_id: string): Omit<PlanEvent, 'id'
   line_number: 0,
 });
 
+type PlanModalProps = {
+  open: boolean;
+  onClose: () => void;
+  onCreate: (plan: { name: string; repo_id: string; description: string }) => void;
+  repoId: string;
+};
+
+const PlanCreateModal = ({ open, onClose, onCreate, repoId }: PlanModalProps) => {
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+
+  // Reset form when modal opens
+  useEffect(() => {
+    if (open) {
+      setName('');
+      setDescription('');
+    }
+  }, [open]);
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" tabIndex={-1} aria-modal="true" role="dialog">
+      <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+        <h2 className="text-xl font-bold mb-4">Create New Plan</h2>
+        <form
+          onSubmit={e => {
+            e.preventDefault();
+            onCreate({ name, repo_id: repoId, description });
+          }}
+        >
+          <div className="mb-4">
+            <label className="block font-semibold mb-1" htmlFor="plan-name">Name</label>
+            <input
+              id="plan-name"
+              className="input input-bordered w-full"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              required
+              aria-label="Plan name"
+              tabIndex={0}
+            />
+          </div>
+          <div className="mb-4">
+            <label className="block font-semibold mb-1" htmlFor="plan-description">Description</label>
+            <textarea
+              id="plan-description"
+              className="textarea textarea-bordered w-full"
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              aria-label="Plan description"
+              tabIndex={0}
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              className="btn btn-outline"
+              onClick={onClose}
+              tabIndex={0}
+              aria-label="Cancel"
+            >Cancel</button>
+            <button
+              type="submit"
+              className="btn btn-primary"
+              tabIndex={0}
+              aria-label="Create plan"
+              disabled={!name}
+            >Create</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 const TrackingPlan = () => {
   const [repos, setRepos] = useState<{ id: string; name: string }[]>([]);
   const [selectedRepo, setSelectedRepo] = useState<string>('');
-  const [plans, setPlans] = useState<Plan[]>([]);
-  const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
+  const [selectedPlanId, setSelectedPlanId] = useState<string>('');
   const [rowData, setRowData] = useState<PlanEvent[]>([]);
   const [editRows, setEditRows] = useState<Record<string, Partial<PlanEvent>>>({});
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPlanModal, setShowPlanModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
+  const { user } = useUserContext();
   // Fetch repos on mount
   useEffect(() => {
     (async () => {
@@ -52,23 +126,20 @@ const TrackingPlan = () => {
     })();
   }, []);
 
-  // Fetch plans when repo changes
+  // Fetch plans for selected repo
+  const { data: plans = [], refetch: refetchPlans } = usePlans();
+
+  // Set default selected plan when plans change
   useEffect(() => {
-    if (!selectedRepo) return;
-    (async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const planList = await listPlans(selectedRepo);
-        setPlans(planList);
-        setSelectedPlan(planList.length > 0 ? planList[0] : null);
-      } catch (e) {
-        setError(`Failed to load plans: ${e}`);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [selectedRepo]);
+    if (plans.length > 0) {
+      setSelectedPlanId(plans[0].id);
+    } else {
+      setSelectedPlanId('');
+    }
+  }, [plans]);
+
+  // Fetch selected plan details
+  const { data: selectedPlan } = usePlan(selectedPlanId, !!selectedPlanId);
 
   // Fetch events when plan changes
   const fetchEvents = useCallback(async () => {
@@ -130,12 +201,15 @@ const TrackingPlan = () => {
     }
   };
 
+  // Export plan events using useExportPlanEvents
+  const exportPlanEventsMutation = useExportPlanEvents();
+
   const handleExport = async () => {
     if (!selectedPlan) return;
     setExporting(true);
     setError(null);
     try {
-      const blob = await exportPlanEvents(selectedPlan.id);
+      const blob = await exportPlanEventsMutation.mutateAsync(selectedPlan.id);
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -149,18 +223,45 @@ const TrackingPlan = () => {
     }
   };
 
+  // Import plan events using useImportPlanEvents
+  const importPlanEventsMutation = useImportPlanEvents();
+
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!selectedPlan || !e.target.files?.[0]) return;
     setImporting(true);
     setError(null);
     try {
-      await importPlanEvents(selectedPlan.id, e.target.files[0]);
+      await importPlanEventsMutation.mutateAsync({ planId: selectedPlan.id, file: e.target.files[0] });
       await fetchEvents();
     } catch (e) {
       setError(`Failed to import: ${e}`);
     } finally {
       setImporting(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  // Create plan using useCreatePlan
+  const createPlanMutation = useCreatePlan();
+
+  const handleOpenPlanModal = () => setShowPlanModal(true);
+  const handleClosePlanModal = () => setShowPlanModal(false);
+
+  const handleCreatePlan = async (plan: { name: string; repo_id: string; description: string }) => {
+    setError(null);
+    try {
+      await createPlanMutation.mutateAsync({
+        name: plan.name,
+        description: plan.description,
+        status: 'active',
+        version: '1.0.0',
+        user_id: user?.id ?? '',
+        import_source: 'manual',
+      });
+      await refetchPlans();
+      setShowPlanModal(false);
+    } catch (e) {
+      setError(`Failed to create plan: ${e}`);
     }
   };
 
@@ -217,14 +318,25 @@ const TrackingPlan = () => {
         <label className="font-semibold ml-4">Plan:</label>
         <select
           className="select select-bordered"
-          value={selectedPlan?.id || ''}
-          onChange={e => setSelectedPlan(plans.find(p => p.id === e.target.value) || null)}
+          value={selectedPlanId}
+          onChange={e => setSelectedPlanId(e.target.value)}
           aria-label="Select plan"
         >
           {plans.map(p => <option key={p.id} value={p.id}>{p.name} (v{p.version})</option>)}
         </select>
+        <button
+          className="btn btn-outline ml-2"
+          onClick={handleOpenPlanModal}
+          tabIndex={0}
+          aria-label="Create new plan"
+          disabled={!selectedRepo}
+        >
+          + Create Plan
+        </button>
         {selectedPlan && (
-          <span className="ml-4 text-sm text-base-content/60">Status: <span className="font-semibold">{selectedPlan.status}</span> | Version: <span className="font-semibold">{selectedPlan.version}</span> | Imported: <span className="font-semibold">{selectedPlan.import_source || 'N/A'}</span></span>
+          <span className="ml-4 text-sm text-base-content/60">
+            Status: <span className="font-semibold">{selectedPlan.status}</span> | Version: <span className="font-semibold">{selectedPlan.version}</span> | Imported: <span className="font-semibold">{selectedPlan.import_source || 'N/A'}</span>
+          </span>
         )}
       </div>
       <div className="flex gap-2 mb-4">
@@ -249,8 +361,14 @@ const TrackingPlan = () => {
         />
       </div>
       {loading && <div className="mt-4 text-base-content/60">Loading...</div>}
+      <PlanCreateModal
+        open={showPlanModal}
+        onClose={handleClosePlanModal}
+        onCreate={handleCreatePlan}
+        repoId={selectedRepo}
+      />
     </div>
   );
 };
 
-export default TrackingPlan; 
+export default TrackingPlan;

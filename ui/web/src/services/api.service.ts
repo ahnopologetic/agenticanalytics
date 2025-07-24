@@ -174,10 +174,10 @@ export class RepoService {
 
 // API Service class for Plan related endpoints
 export class PlanService {
-    static listPlans(repoId: string): Promise<Plan[]> {
+    static listPlans(): Promise<Plan[]> {
         return createAPIRequest<Plan[]>({
             method: 'GET',
-            url: `/repo/${repoId}/plans`
+            url: `/plans/`
         });
     }
 
@@ -191,7 +191,7 @@ export class PlanService {
     static createPlan(plan: Omit<Plan, 'id' | 'created_at' | 'updated_at'>): Promise<Plan> {
         return createAPIRequest<Plan>({
             method: 'POST',
-            url: '/plans',
+            url: '/plans/',
             data: plan
         });
     }
@@ -262,4 +262,22 @@ export class PlanService {
             }
         }).then(response => response.data);
     }
+
+    static addReposToPlan(planId: string, repoIds: string[]): Promise<void> {
+        return createAPIRequest<void>({
+            method: 'POST',
+            url: `/plans/${planId}/repos`,
+            data: { repo_ids: repoIds }
+        });
+    }
 } 
+
+export class EventService {
+    static createEvent(event: Omit<PlanEvent, 'id' | 'created_at' | 'updated_at'>): Promise<PlanEvent> {
+        return createAPIRequest<PlanEvent>({
+            method: 'POST',
+            url: `/events/`,
+            data: event
+        });
+    }
+}

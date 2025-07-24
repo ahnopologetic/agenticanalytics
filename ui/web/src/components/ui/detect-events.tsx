@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import type { DetectedEvent } from '../../api'
+import { useAddReposToPlan, usePlans } from '../../hooks/use-plan'
+import { useBulkCreateEvents } from '../../hooks/use-event'
 
 const locationToPermlink = (location: string) => {
     const line = location.split(':')[1]
@@ -7,19 +9,15 @@ const locationToPermlink = (location: string) => {
     return `${file}#L${line}`
 }
 
-const PLANS = [
-    { id: 'growth', name: 'Growth Plan' },
-    { id: 'core', name: 'Core Plan' },
-]
-
 const DetectedEventsSection = ({ events, repoUrl }: { events: DetectedEvent[], repoUrl?: string }) => {
     const [openIdx, setOpenIdx] = useState<number | null>(null)
     const [search, setSearch] = useState('')
     const [selected, setSelected] = useState<Set<string>>(new Set())
     const [showPlanDropdown, setShowPlanDropdown] = useState(false)
     const [selectedPlan, setSelectedPlan] = useState<string>('')
-    const [isSubmitting, setIsSubmitting] = useState(false)
-    const [submitSuccess, setSubmitSuccess] = useState(false)
+    const { data: plans = [] } = usePlans();
+    const { mutate: addReposToPlan, isPending: isAddingRepos } = useAddReposToPlan();
+    const { mutate: bulkCreateEvents, isPending: isSavingEvents } = useBulkCreateEvents();
 
     const filtered = events.filter(e =>
         e.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -58,16 +56,60 @@ const DetectedEventsSection = ({ events, repoUrl }: { events: DetectedEvent[], r
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
         if (!selectedPlan) return
-        setIsSubmitting(true)
-        setSubmitSuccess(false)
-        setTimeout(() => {
-            setIsSubmitting(false)
-            setSubmitSuccess(true)
-            setSelected(new Set())
-            setShowPlanDropdown(false)
-            setSelectedPlan('')
-            setTimeout(() => setSubmitSuccess(false), 2000)
-        }, 3000)
+        const params = new URLSearchParams(window.location.search);
+        const repoId = params.get('repo');
+        if (!repoId) {
+            return;
+        }
+        addReposToPlan({ planId: selectedPlan, repoIds: [repoId] }, {
+            onSuccess: () => {
+                setSelected(new Set())
+                setShowPlanDropdown(false)
+                setSelectedPlan('')
+            }
+        });
+    }
+
+    const handleSaveSelectedToRepo = () => {
+        const params = new URLSearchParams(window.location.search);
+        const repoId = params.get('repo');
+        if (!repoId) {
+            return;
+        }
+        // Find selected events
+        const selectedEvents = filtered.filter(e => selected.has(e.name + e.location));
+        if (selectedEvents.length === 0) {
+            return;
+        }
+        // Map DetectedEvent to PlanEvent input (excluding id, created_at, updated_at)
+        const eventsToCreate = selectedEvents.map(e => ({
+            name: e.name,
+            description: e.description,
+            location: e.location,
+            repo_id: repoId,
+            properties: e.properties,
+            // tags: e.tags || [],
+        }));
+        // Map DetectedEvent to match PlanEvent input requirements
+        const formattedEvents = eventsToCreate.map(e => ({
+            event_name: e.name,
+            description: e.description,
+            context: e.description, // Assuming context is similar to description; adjust as needed
+            tags: [], // Add tags if available in your DetectedEvent
+            location: e.location,
+            file_path: '', // Provide file_path if available in your DetectedEvent
+            line_number: 0, // Provide line_number if available in your DetectedEvent
+            repo_id: e.repo_id,
+            properties: e.properties,
+        }));
+        bulkCreateEvents(
+            { events: formattedEvents },
+            {
+                onSuccess: () => {
+                    setSelected(new Set());
+                }
+            }
+        );
     }
 
     return (
@@ -105,9 +147,23 @@ const DetectedEventsSection = ({ events, repoUrl }: { events: DetectedEvent[], r
                                 aria-haspopup="listbox"
                                 aria-expanded={showPlanDropdown}
                                 tabIndex={0}
-                                disabled={isSubmitting}
+                                disabled={isAddingRepos}
                             >
-                                Add to plan
+                                Add to Tracking plan
+                            </button>
+                            <button
+                                className="btn btn-sm btn-accent"
+                                onClick={handleSaveSelectedToRepo}
+                                tabIndex={0}
+                                aria-label="Save selected events to repo"
+                                disabled={isSavingEvents}
+                            >
+                                {isSavingEvents ? (
+                                    <span className="flex items-center gap-2 justify-center">
+                                        <span className="loading loading-spinner loading-xs" />
+                                        Saving...
+                                    </span>
+                                ) : 'Save the selected to repo'}
                             </button>
                             {showPlanDropdown && (
                                 <form onSubmit={handleSubmit} className="relative z-10">
@@ -122,27 +178,24 @@ const DetectedEventsSection = ({ events, repoUrl }: { events: DetectedEvent[], r
                                             required
                                         >
                                             <option value="" disabled>Select a plan</option>
-                                            {PLANS.map(plan => (
+                                            {plans.map(plan => (
                                                 <option key={plan.id} value={plan.id}>{plan.name}</option>
                                             ))}
                                         </select>
                                         <button
                                             className="btn btn-sm btn-success w-full"
                                             type="submit"
-                                            disabled={isSubmitting || !selectedPlan}
+                                            disabled={isAddingRepos || !selectedPlan}
                                             tabIndex={0}
                                             aria-label="Submit selected events to plan"
                                         >
-                                            {isSubmitting ? (
+                                            {isAddingRepos ? (
                                                 <span className="flex items-center gap-2 justify-center">
                                                     <span className="loading loading-spinner loading-xs" />
                                                     Adding...
                                                 </span>
                                             ) : 'Submit'}
                                         </button>
-                                        {submitSuccess && (
-                                            <div className="text-success text-xs mt-1">Added to plan!</div>
-                                        )}
                                     </div>
                                 </form>
                             )}
@@ -157,7 +210,7 @@ const DetectedEventsSection = ({ events, repoUrl }: { events: DetectedEvent[], r
                     const eventKey = event.name + event.location
                     const isChecked = selected.has(eventKey)
                     return (
-                        <div key={eventKey} className={`border rounded-lg bg-base-100 shadow-sm relative group transition-all duration-200 ${isChecked ? 'ring-2 ring-primary/40' : ''}`}> 
+                        <div key={eventKey} className={`border rounded-lg bg-base-100 shadow-sm relative group transition-all duration-200 ${isChecked ? 'ring-2 ring-primary/40' : ''}`}>
                             <div className="absolute left-2 top-2">
                                 <input
                                     type="checkbox"

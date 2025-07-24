@@ -6,11 +6,11 @@ import { useApiQuery, useApiMutation } from './use-api';
 /**
  * Hook for fetching plans for a specific repository
  */
-export function usePlans(repoId: string, enabled = true) {
+export function usePlans(enabled = true) {
   return useApiQuery<Plan[]>(
-    ['plan', 'list', repoId],
-    () => PlanService.listPlans(repoId),
-    { enabled: enabled && !!repoId }
+    ['plan', 'list'],
+    () => PlanService.listPlans(),
+    { enabled: enabled }
   );
 }
 
@@ -30,13 +30,13 @@ export function usePlan(planId: string, enabled = true) {
  */
 export function useCreatePlan() {
   const queryClient = useQueryClient();
-  
+
   return useApiMutation<Plan, Omit<Plan, 'id' | 'created_at' | 'updated_at'>>(
     (plan) => PlanService.createPlan(plan),
     {
       onSuccess: (data) => {
-        queryClient.invalidateQueries({ 
-          queryKey: ['plan', 'list', data.repo_id] 
+        queryClient.invalidateQueries({
+          queryKey: ['plan', 'list', data.user_id]
         });
       }
     }
@@ -48,14 +48,14 @@ export function useCreatePlan() {
  */
 export function useUpdatePlan() {
   const queryClient = useQueryClient();
-  
+
   return useApiMutation<Plan, { planId: string; plan: Partial<Plan> }>(
     ({ planId, plan }) => PlanService.updatePlan(planId, plan),
     {
       onSuccess: (data) => {
         queryClient.invalidateQueries({ queryKey: ['plan', data.id] });
-        queryClient.invalidateQueries({ 
-          queryKey: ['plan', 'list', data.repo_id] 
+        queryClient.invalidateQueries({
+          queryKey: ['plan', 'list', data.repo_id]
         });
       }
     }
@@ -67,14 +67,14 @@ export function useUpdatePlan() {
  */
 export function useDeletePlan() {
   const queryClient = useQueryClient();
-  
+
   return useApiMutation<void, string>(
     (planId) => PlanService.deletePlan(planId),
     {
       onSuccess: (_, planId) => {
         queryClient.invalidateQueries({ queryKey: ['plan', planId] });
-        queryClient.invalidateQueries({ 
-          queryKey: ['plan', 'list'] 
+        queryClient.invalidateQueries({
+          queryKey: ['plan', 'list']
         });
       }
     }
@@ -97,13 +97,13 @@ export function usePlanEvents(planId: string, enabled = true) {
  */
 export function useCreatePlanEvent() {
   const queryClient = useQueryClient();
-  
+
   return useApiMutation<PlanEvent, Omit<PlanEvent, 'id' | 'created_at' | 'updated_at'>>(
     (event) => PlanService.createPlanEvent(event),
     {
       onSuccess: (data) => {
-        queryClient.invalidateQueries({ 
-          queryKey: ['plan', data.plan_id, 'events'] 
+        queryClient.invalidateQueries({
+          queryKey: ['plan', data.plan_id, 'events']
         });
       }
     }
@@ -115,13 +115,13 @@ export function useCreatePlanEvent() {
  */
 export function useUpdatePlanEvent() {
   const queryClient = useQueryClient();
-  
+
   return useApiMutation<PlanEvent, { eventId: string; event: Partial<PlanEvent> }>(
     ({ eventId, event }) => PlanService.updatePlanEvent(eventId, event),
     {
       onSuccess: (data) => {
-        queryClient.invalidateQueries({ 
-          queryKey: ['plan', data.plan_id, 'events'] 
+        queryClient.invalidateQueries({
+          queryKey: ['plan', data.plan_id, 'events']
         });
       }
     }
@@ -133,12 +133,12 @@ export function useUpdatePlanEvent() {
  */
 export function useDeletePlanEvent() {
   const queryClient = useQueryClient();
-  
+
   return useApiMutation<void, string>(
     (eventId) => PlanService.deletePlanEvent(eventId),
     {
       onSuccess: () => {
-        queryClient.invalidateQueries({ 
+        queryClient.invalidateQueries({
           queryKey: ['plan'],
           predicate: (query) => query.queryKey[2] === 'events'
         });
@@ -161,15 +161,21 @@ export function useExportPlanEvents() {
  */
 export function useImportPlanEvents() {
   const queryClient = useQueryClient();
-  
+
   return useApiMutation<PlanEvent[], { planId: string; file: File }>(
     ({ planId, file }) => PlanService.importPlanEvents(planId, file),
     {
       onSuccess: (_, { planId }) => {
-        queryClient.invalidateQueries({ 
-          queryKey: ['plan', planId, 'events'] 
+        queryClient.invalidateQueries({
+          queryKey: ['plan', planId, 'events']
         });
       }
     }
   );
-} 
+}
+
+export function useAddReposToPlan() {
+  return useApiMutation<void, { planId: string; repoIds: string[] }>(
+    ({ planId, repoIds }) => PlanService.addReposToPlan(planId, repoIds)
+  );
+}
