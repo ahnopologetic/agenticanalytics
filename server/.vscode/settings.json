@@ -1,5 +1,10 @@
 {
     "yaml.schemas": {
         "https://github.com/drtail/drtail-prompt/releases/download/v0.3.1/prompt.json": ["*.prompt.yaml", "*.prompt.yml"]
-    }
+    },
+    "python.testing.pytestArgs": [
+        "tests"
+    ],
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true
 }
