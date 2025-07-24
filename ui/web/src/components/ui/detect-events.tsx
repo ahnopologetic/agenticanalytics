@@ -7,14 +7,69 @@ const locationToPermlink = (location: string) => {
     return `${file}#L${line}`
 }
 
+const PLANS = [
+    { id: 'growth', name: 'Growth Plan' },
+    { id: 'core', name: 'Core Plan' },
+]
+
 const DetectedEventsSection = ({ events, repoUrl }: { events: DetectedEvent[], repoUrl?: string }) => {
     const [openIdx, setOpenIdx] = useState<number | null>(null)
     const [search, setSearch] = useState('')
+    const [selected, setSelected] = useState<Set<string>>(new Set())
+    const [showPlanDropdown, setShowPlanDropdown] = useState(false)
+    const [selectedPlan, setSelectedPlan] = useState<string>('')
+    const [isSubmitting, setIsSubmitting] = useState(false)
+    const [submitSuccess, setSubmitSuccess] = useState(false)
+
     const filtered = events.filter(e =>
         e.name.toLowerCase().includes(search.toLowerCase()) ||
         e.description.toLowerCase().includes(search.toLowerCase()) ||
         e.location.toLowerCase().includes(search.toLowerCase())
     )
+
+    const handleSelect = (eventKey: string) => {
+        setSelected(prev => {
+            const next = new Set(prev)
+            if (next.has(eventKey)) {
+                next.delete(eventKey)
+            } else {
+                next.add(eventKey)
+            }
+            return next
+        })
+    }
+
+    const handleSelectAll = () => {
+        if (selected.size === filtered.length) {
+            setSelected(new Set())
+        } else {
+            setSelected(new Set(filtered.map(e => e.name + e.location)))
+        }
+    }
+
+    const handleAddToPlan = () => {
+        setShowPlanDropdown(v => !v)
+    }
+
+    const handlePlanSelect = (planId: string) => {
+        setSelectedPlan(planId)
+    }
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!selectedPlan) return
+        setIsSubmitting(true)
+        setSubmitSuccess(false)
+        setTimeout(() => {
+            setIsSubmitting(false)
+            setSubmitSuccess(true)
+            setSelected(new Set())
+            setShowPlanDropdown(false)
+            setSelectedPlan('')
+            setTimeout(() => setSubmitSuccess(false), 2000)
+        }, 3000)
+    }
+
     return (
         <>
             <div className="flex items-center justify-between mb-4">
@@ -31,17 +86,94 @@ const DetectedEventsSection = ({ events, repoUrl }: { events: DetectedEvent[], r
                     aria-label="Search tracking plan events"
                 />
             </div>
+            {filtered.length > 0 && (
+                <div className="flex items-center mb-2 gap-2">
+                    <input
+                        type="checkbox"
+                        className="checkbox checkbox-xs"
+                        checked={selected.size === filtered.length}
+                        onChange={handleSelectAll}
+                        aria-label="Select all events"
+                        tabIndex={0}
+                    />
+                    <span className="text-xs text-base-content/60 select-none">Select all</span>
+                    {selected.size > 0 && (
+                        <div className="ml-auto flex items-center gap-2">
+                            <button
+                                className="btn btn-sm btn-primary"
+                                onClick={handleAddToPlan}
+                                aria-haspopup="listbox"
+                                aria-expanded={showPlanDropdown}
+                                tabIndex={0}
+                                disabled={isSubmitting}
+                            >
+                                Add to plan
+                            </button>
+                            {showPlanDropdown && (
+                                <form onSubmit={handleSubmit} className="relative z-10">
+                                    <div className="absolute right-0 mt-2 w-48 bg-base-100 border rounded shadow-lg p-3 flex flex-col gap-2">
+                                        <label className="text-xs font-semibold mb-1">Select plan:</label>
+                                        <select
+                                            className="select select-sm select-bordered w-full mb-2"
+                                            value={selectedPlan}
+                                            onChange={e => handlePlanSelect(e.target.value)}
+                                            aria-label="Select plan"
+                                            tabIndex={0}
+                                            required
+                                        >
+                                            <option value="" disabled>Select a plan</option>
+                                            {PLANS.map(plan => (
+                                                <option key={plan.id} value={plan.id}>{plan.name}</option>
+                                            ))}
+                                        </select>
+                                        <button
+                                            className="btn btn-sm btn-success w-full"
+                                            type="submit"
+                                            disabled={isSubmitting || !selectedPlan}
+                                            tabIndex={0}
+                                            aria-label="Submit selected events to plan"
+                                        >
+                                            {isSubmitting ? (
+                                                <span className="flex items-center gap-2 justify-center">
+                                                    <span className="loading loading-spinner loading-xs" />
+                                                    Adding...
+                                                </span>
+                                            ) : 'Submit'}
+                                        </button>
+                                        {submitSuccess && (
+                                            <div className="text-success text-xs mt-1">Added to plan!</div>
+                                        )}
+                                    </div>
+                                </form>
+                            )}
+                        </div>
+                    )}
+                </div>
+            )}
             <div className="space-y-3">
                 {filtered.length === 0 && <div className="text-base-content/60">No events found.</div>}
                 {filtered.map((event, idx) => {
                     const isOpen = openIdx === idx
+                    const eventKey = event.name + event.location
+                    const isChecked = selected.has(eventKey)
                     return (
-                        <div key={event.name + event.location} className="border rounded-lg bg-base-100 shadow-sm">
+                        <div key={eventKey} className={`border rounded-lg bg-base-100 shadow-sm relative group transition-all duration-200 ${isChecked ? 'ring-2 ring-primary/40' : ''}`}> 
+                            <div className="absolute left-2 top-2">
+                                <input
+                                    type="checkbox"
+                                    className="checkbox checkbox-xs"
+                                    checked={isChecked}
+                                    onChange={() => handleSelect(eventKey)}
+                                    aria-label={`Select event ${event.name}`}
+                                    tabIndex={0}
+                                />
+                            </div>
                             <button
-                                className="w-full flex items-center gap-3 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/40 transition"
+                                className="w-full flex items-center gap-3 px-7 py-2 focus:outline-none focus:ring-2 focus:ring-primary/40 transition text-left"
                                 onClick={() => setOpenIdx(isOpen ? null : idx)}
                                 aria-expanded={isOpen}
                                 aria-controls={`tracking-event-panel-${idx}`}
+                                tabIndex={0}
                             >
                                 <div className="flex-1 text-left">
                                     <div className="font-semibold text-base-content line-clamp-1 flex items-center gap-2">
