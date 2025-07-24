@@ -19,12 +19,12 @@ class MainAgentTaskManager:
         self.agent = agent
         self.session_service = (
             InMemorySessionService()
-            if config.env == "dev"
+            if config.env != "prod"
             else DatabaseSessionService(db_url=config.db_url)
         )
         self.artifact_service = (
             InMemoryArtifactService()
-            if config.env == "dev"
+            if config.env != "prod"
             else GcsArtifactService(bucket_name="agenticanalytics")
         )
         self.app_name = app_name
