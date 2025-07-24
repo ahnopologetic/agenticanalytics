@@ -13,7 +13,6 @@ router = APIRouter(tags=["events"])
 
 
 class UserEventCreate(BaseModel):
-    plan_id: str
     repo_id: str
     event_name: str
     context: str = ""

@@ -4,7 +4,9 @@ from sqlalchemy.orm import Session
 from fastapi import Depends
 from fastapi import HTTPException
 from uuid import UUID
+from gotrue.types import User
 
+from routers.deps import get_current_user
 from routers.repo import PlanCreate, PlanResponse, RepoResponse
 from db_models import Plan, Repo
 from utils.db_session import get_db
@@ -17,8 +19,12 @@ class AddReposToPlan(BaseModel):
 
 
 @router.post("/", response_model=PlanResponse, status_code=status.HTTP_201_CREATED)
-def create_plan(plan: PlanCreate, db: Session = Depends(get_db)):
-    db_plan = Plan(**plan.model_dump())
+def create_plan(
+    plan: PlanCreate,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    db_plan = Plan(**plan.model_dump(), user_id=user.id)
     db.add(db_plan)
     db.commit()
     db.refresh(db_plan)
@@ -31,14 +37,49 @@ def create_plan(plan: PlanCreate, db: Session = Depends(get_db)):
         import_source=db_plan.import_source or "",
         created_at=db_plan.created_at,
         updated_at=db_plan.updated_at,
+        user_id=str(db_plan.user_id),
     )
+
+
+@router.get("/")
+def get_plans(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    plans = db.query(Plan).filter(Plan.user_id == user.id).all()
+    return plans
+
+
+@router.get("/{plan_id}")
+def get_plan(
+    plan_id: UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)
+):
+    plan = db.query(Plan).filter(Plan.id == plan_id, Plan.user_id == user.id).first()
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+    return plan
+
+
+@router.get("/{plan_id}/events")
+def get_plan_events(
+    plan_id: UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)
+):
+    plan = db.query(Plan).filter(Plan.id == plan_id, Plan.user_id == user.id).first()
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+
+    events = []
+    for repo in plan.repos:
+        events.extend(repo.events)
+
+    return events
 
 
 @router.post("/{plan_id}/repos")
 def add_repos_to_plan(
-    plan_id: UUID, add_repos_to_plan: AddReposToPlan, db: Session = Depends(get_db)
+    plan_id: UUID,
+    add_repos_to_plan: AddReposToPlan,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
-    plan = db.query(Plan).filter(Plan.id == plan_id).first()
+    plan = db.query(Plan).filter(Plan.id == plan_id, Plan.user_id == user.id).first()
     if not plan:
         raise HTTPException(status_code=404, detail="Plan not found")
     for repo_id in add_repos_to_plan.repo_ids:

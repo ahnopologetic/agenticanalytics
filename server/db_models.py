@@ -110,6 +110,7 @@ class Plan(Base):
     status = Column(String, default="active")
     version = Column(String, default="1.0")
     import_source = Column(String)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("profiles.id", ondelete="CASCADE"))
     created_at = Column(DateTime, default=utcnow)
     updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
 
@@ -122,9 +123,6 @@ class Plan(Base):
 class UserEvent(Base):
     __tablename__ = "user_events"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    plan_id = Column(
-        UUID(as_uuid=True), ForeignKey("plans.id", ondelete="CASCADE"), nullable=True
-    )
     repo_id = Column(
         UUID(as_uuid=True), ForeignKey("repos.id", ondelete="CASCADE"), nullable=True
     )
