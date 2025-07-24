@@ -186,3 +186,4 @@ cloned_repo/
 samples/
 
 .vscode/
+*.db

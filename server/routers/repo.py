@@ -1,18 +1,19 @@
 import csv
 import io
-from datetime import datetime, timezone
 import json
+from datetime import datetime
 from typing import List, Optional
 from uuid import UUID
-from agents.runner import agentic_analytics_task_manager
 
-from db_models import Plan, Repo, UserEvent
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from gotrue.types import User
-from pydantic import BaseModel, Field
-from routers.deps import get_current_user
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
+
+from agents.runner import agentic_analytics_task_manager
+from db_models import Plan, Repo, UserEvent
+from routers.deps import get_current_user
 from utils.db_session import get_db
 
 router = APIRouter(tags=["repo"])
@@ -22,8 +23,8 @@ class RepoCreate(BaseModel):
     name: str
     description: str
     url: str
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
 
 class RepoUpdate(BaseModel):
@@ -46,7 +47,6 @@ class RepoResponse(BaseModel):
 
 
 class PlanCreate(BaseModel):
-    repo_id: str
     name: str
     description: str = ""
     status: str = "active"
@@ -64,7 +64,6 @@ class PlanUpdate(BaseModel):
 
 class PlanResponse(BaseModel):
     id: str
-    repo_id: str
     name: str
     description: str
     status: str
@@ -94,8 +93,8 @@ class UserEventUpdate(BaseModel):
 
 class UserEventResponse(BaseModel):
     id: str
-    plan_id: str
-    repo_id: str
+    plan_id: str | UUID
+    repo_id: str | UUID
     event_name: str
     context: str
     tags: list[str]
@@ -133,7 +132,7 @@ def get_repos(
 
 @router.get("/{repo_id}", response_model=RepoResponse)
 def get_repo(
-    repo_id: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)
+    repo_id: UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)
 ):
     repo = db.query(Repo).filter(Repo.id == repo_id, Repo.user_id == user.id).first()
     if repo is None:
@@ -143,7 +142,7 @@ def get_repo(
 
 @router.put("/{repo_id}", response_model=RepoResponse)
 def update_repo(
-    repo_id: str,
+    repo_id: UUID,
     repo: RepoUpdate,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
@@ -161,7 +160,7 @@ def update_repo(
 
 
 @router.delete("/{repo_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_repo(repo_id: str, db: Session = Depends(get_db)):
+def delete_repo(repo_id: UUID, db: Session = Depends(get_db)):
     db_repo = db.query(Repo).filter(Repo.id == repo_id).first()
     if db_repo is None:
         raise HTTPException(status_code=404, detail="Repo not found")
@@ -212,13 +211,15 @@ async def get_detected_events(
     return deduped_events
 
 
-@router.get("/repo/{repo_id}/plans", response_model=List[PlanResponse])
-def list_plans(repo_id: str, db: Session = Depends(get_db)):
-    plans = db.query(Plan).filter(Plan.repo_id == repo_id).all()
+@router.get("/{repo_id}/plans", response_model=List[PlanResponse])
+def list_plans(repo_id: UUID, db: Session = Depends(get_db)):
+    repo = db.query(Repo).filter(Repo.id == repo_id).first()
+    if not repo:
+        raise HTTPException(status_code=404, detail="Repo not found")
+    plans = repo.plans
     return [
         PlanResponse(
             id=str(p.id),
-            repo_id=str(p.repo_id),
             name=p.name,
             description=p.description or "",
             status=p.status,
@@ -232,13 +233,12 @@ def list_plans(repo_id: str, db: Session = Depends(get_db)):
 
 
 @router.get("/plans/{plan_id}", response_model=PlanResponse)
-def get_plan(plan_id: str, db: Session = Depends(get_db)):
+def get_plan(plan_id: UUID, db: Session = Depends(get_db)):
     plan = db.query(Plan).filter(Plan.id == plan_id).first()
     if not plan:
         raise HTTPException(status_code=404, detail="Plan not found")
     return PlanResponse(
         id=str(plan.id),
-        repo_id=str(plan.repo_id),
         name=plan.name,
         description=plan.description or "",
         status=plan.status,
@@ -257,7 +257,6 @@ def create_plan(plan: PlanCreate, db: Session = Depends(get_db)):
     db.refresh(db_plan)
     return PlanResponse(
         id=str(db_plan.id),
-        repo_id=str(db_plan.repo_id),
         name=db_plan.name,
         description=db_plan.description or "",
         status=db_plan.status,
@@ -269,7 +268,7 @@ def create_plan(plan: PlanCreate, db: Session = Depends(get_db)):
 
 
 @router.put("/plans/{plan_id}", response_model=PlanResponse)
-def update_plan(plan_id: str, plan: PlanUpdate, db: Session = Depends(get_db)):
+def update_plan(plan_id: UUID, plan: PlanUpdate, db: Session = Depends(get_db)):
     db_plan = db.query(Plan).filter(Plan.id == plan_id).first()
     if not db_plan:
         raise HTTPException(status_code=404, detail="Plan not found")
@@ -279,7 +278,6 @@ def update_plan(plan_id: str, plan: PlanUpdate, db: Session = Depends(get_db)):
     db.refresh(db_plan)
     return PlanResponse(
         id=str(db_plan.id),
-        repo_id=str(db_plan.repo_id),
         name=db_plan.name,
         description=db_plan.description or "",
         status=db_plan.status,
@@ -291,7 +289,7 @@ def update_plan(plan_id: str, plan: PlanUpdate, db: Session = Depends(get_db)):
 
 
 @router.delete("/plans/{plan_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_plan(plan_id: str, db: Session = Depends(get_db)):
+def delete_plan(plan_id: UUID, db: Session = Depends(get_db)):
     db_plan = db.query(Plan).filter(Plan.id == plan_id).first()
     if not db_plan:
         raise HTTPException(status_code=404, detail="Plan not found")
@@ -301,7 +299,7 @@ def delete_plan(plan_id: str, db: Session = Depends(get_db)):
 
 
 @router.get("/plans/{plan_id}/events", response_model=List[UserEventResponse])
-def list_events_for_plan(plan_id: str, db: Session = Depends(get_db)):
+def list_events_for_plan(plan_id: UUID, db: Session = Depends(get_db)):
     events = db.query(UserEvent).filter(UserEvent.plan_id == plan_id).all()
     return [
         UserEventResponse(
@@ -324,7 +322,11 @@ def list_events_for_plan(plan_id: str, db: Session = Depends(get_db)):
     "/events", response_model=UserEventResponse, status_code=status.HTTP_201_CREATED
 )
 def create_event(event: UserEventCreate, db: Session = Depends(get_db)):
-    db_event = UserEvent(**event.model_dump())
+    db_event = UserEvent(
+        plan_id=UUID(event.plan_id),
+        repo_id=UUID(event.repo_id),
+        **event.model_dump(exclude=["plan_id", "repo_id"]),
+    )
     db.add(db_event)
     db.commit()
     db.refresh(db_event)
@@ -343,7 +345,7 @@ def create_event(event: UserEventCreate, db: Session = Depends(get_db)):
 
 
 @router.put("/events/{event_id}", response_model=UserEventResponse)
-def update_event(event_id: str, event: UserEventUpdate, db: Session = Depends(get_db)):
+def update_event(event_id: UUID, event: UserEventUpdate, db: Session = Depends(get_db)):
     db_event = db.query(UserEvent).filter(UserEvent.id == event_id).first()
     if not db_event:
         raise HTTPException(status_code=404, detail="Event not found")
@@ -366,7 +368,7 @@ def update_event(event_id: str, event: UserEventUpdate, db: Session = Depends(ge
 
 
 @router.delete("/events/{event_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_event(event_id: str, db: Session = Depends(get_db)):
+def delete_event(event_id: UUID, db: Session = Depends(get_db)):
     db_event = db.query(UserEvent).filter(UserEvent.id == event_id).first()
     if not db_event:
         raise HTTPException(status_code=404, detail="Event not found")
@@ -376,7 +378,7 @@ def delete_event(event_id: str, db: Session = Depends(get_db)):
 
 
 @router.get("/plans/{plan_id}/events/export", response_class=StreamingResponse)
-def export_events_for_plan(plan_id: str, db: Session = Depends(get_db)):
+def export_events_for_plan(plan_id: UUID, db: Session = Depends(get_db)):
     events = db.query(UserEvent).filter(UserEvent.plan_id == plan_id).all()
     output = io.StringIO()
     writer = csv.writer(output)
@@ -419,7 +421,7 @@ def export_events_for_plan(plan_id: str, db: Session = Depends(get_db)):
 
 @router.post("/plans/{plan_id}/events/import", response_model=List[UserEventResponse])
 def import_events_for_plan(
-    plan_id: str, db: Session = Depends(get_db), file: bytes = None
+    plan_id: UUID, db: Session = Depends(get_db), file: bytes = None
 ):
     # This expects a CSV file upload via form-data with key 'file'
 

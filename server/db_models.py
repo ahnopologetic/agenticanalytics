@@ -122,8 +122,12 @@ class Plan(Base):
 class UserEvent(Base):
     __tablename__ = "user_events"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    plan_id = Column(UUID(as_uuid=True), ForeignKey("plans.id", ondelete="CASCADE"))
-    repo_id = Column(UUID(as_uuid=True), ForeignKey("repos.id", ondelete="CASCADE"))
+    plan_id = Column(
+        UUID(as_uuid=True), ForeignKey("plans.id", ondelete="CASCADE"), nullable=True
+    )
+    repo_id = Column(
+        UUID(as_uuid=True), ForeignKey("repos.id", ondelete="CASCADE"), nullable=True
+    )
     event_name = Column(String, nullable=False)
     context = Column(Text)
     tags = Column(TagsType)

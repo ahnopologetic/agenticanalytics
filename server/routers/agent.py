@@ -1,6 +1,9 @@
 from typing import Any, Optional
 
-from agents.runner import agentic_analytics_task_manager
+from agents.runner import (
+    MainAgentTaskManager,
+    get_agentic_analytics_task_manager,
+)
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from db_models import Repo
 from google.adk.sessions.session import Session
@@ -68,7 +71,12 @@ async def get_current_user_id(
 
 # --- Endpoints ---
 @router.get("/sessions")
-async def get_sessions(user: User = Depends(get_current_user)):
+async def get_sessions(
+    user: User = Depends(get_current_user),
+    agentic_analytics_task_manager: MainAgentTaskManager = Depends(
+        get_agentic_analytics_task_manager
+    ),
+):
     sessions = await agentic_analytics_task_manager.list_sessions(user_id=user.id)
     return sessions.model_dump(exclude_none=True)
 
@@ -77,6 +85,9 @@ async def get_sessions(user: User = Depends(get_current_user)):
 async def get_session(
     session_id: str = Query(..., description="The session ID"),
     user: User = Depends(get_current_user),
+    agentic_analytics_task_manager: MainAgentTaskManager = Depends(
+        get_agentic_analytics_task_manager
+    ),
 ):
     return await agentic_analytics_task_manager.get_session(
         session_id=session_id, user_id=user.id
@@ -86,6 +97,9 @@ async def get_session(
 @router.post("/session")
 async def create_session(
     user: User = Depends(get_current_user),
+    agentic_analytics_task_manager: MainAgentTaskManager = Depends(
+        get_agentic_analytics_task_manager
+    ),
 ) -> Session:
     return await agentic_analytics_task_manager.create_session(
         context={"user_id": user.id}, session_id=None
@@ -96,6 +110,9 @@ async def create_session(
 async def run(
     request: AgentRequest,
     user: User = Depends(get_current_user),
+    agentic_analytics_task_manager: MainAgentTaskManager = Depends(
+        get_agentic_analytics_task_manager
+    ),
 ) -> AgentResponse:
     try:
         response = await agentic_analytics_task_manager.execute(
@@ -124,6 +141,9 @@ async def create_task(
     background_tasks: BackgroundTasks,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    agentic_analytics_task_manager: MainAgentTaskManager = Depends(
+        get_agentic_analytics_task_manager
+    ),
 ):
     repo_name = request.message  # TODO: structure the request message
     repo_path = await aclone_repo(repo_name)
