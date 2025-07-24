@@ -2,6 +2,8 @@ import os
 from typing import Optional
 from langchain_community.tools import ShellTool
 from google.adk.tools.langchain_tool import LangchainTool
+from supabase import Client, create_client
+from config import config
 
 shell_tool = ShellTool(
     name="shell_tool",
@@ -130,11 +132,26 @@ def create_temp_dir() -> str:
     return tempfile.mkdtemp()
 
 
-def save_to_supabase_storage(path: str, content: str) -> str:
+def save_to_supabase_storage(path: str, original_path: str) -> str:
     """
     Save a file to Supabase storage and return the path.
-    """
-    import supabase
 
-    supabase.storage.from_("agentic-analytics").upload(path, content)
-    return f"https://agentic-analytics.supabase.co/storage/v1/object/public/{path}"
+    Args:
+        path: The path in the storage to the file to save.
+        original_path: The path to the file to save.
+
+    Returns:
+        The path to the file in Supabase storage.
+    """
+    supabase: Client = create_client(
+        config.supabase_url, config.supabase_service_role_key
+    )
+
+    with open(original_path, "rb") as f:
+        resp = supabase.storage.from_("aa-output").upload(
+            file=f,
+            path=path,
+            file_options={"upsert": "true", "cache-control": "3600"},
+        )
+
+    return resp.full_path

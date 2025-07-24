@@ -10,6 +10,7 @@ from agents.shared.tools import (
     lc_shell_tool,
     list_directory,
     read_file,
+    save_to_supabase_storage,
 )
 
 
@@ -118,6 +119,9 @@ tracking_plan_writer_agent = LlmAgent(
         - Save the tracking plan files to the temporary directory.
         - Create a new file (aatx_<project_name>.json) for each analytics tracking event. Make sure the file name starts with `aatx_` prefix. Keep them in a single file, appending to the file if it already exists.
         - Read current tracking plan and update the tracking plan using the tools provided.
+    4. Save the tracking plan files to Supabase storage.
+        - Use `save_to_supabase_storage` tool to save the tracking plan files to Supabase storage.
+        - The path in the storage should be `<project_name>/<tracking_plan_file_name>.json`.
     </general_instructions>
 
     <analytics_tracking_event>
@@ -216,10 +220,10 @@ tracking_plan_writer_agent = LlmAgent(
     </tools>
 
     <output>
-    Return the path to the tracking plan file you created without any other text.
+    Return the path to the tracking plan file (in Supabase storage) you created without any other text.
 
     <example>
-    /absolute/path/to/aatx_<project_name>.json
+    https://<supabase_project_ref>.supabase.co/storage/v1/object/sign/aa-output/aatx_<project_name>.json
     </example>
     </output>
     """,
@@ -230,6 +234,7 @@ tracking_plan_writer_agent = LlmAgent(
         edit_file,
         convert_analyze_tracking_output_to_tracking_plan,
         create_temp_dir,
+        save_to_supabase_storage,
     ],
     before_agent_callback=_before_agent_callback,
     after_agent_callback=_after_agent_callback,
