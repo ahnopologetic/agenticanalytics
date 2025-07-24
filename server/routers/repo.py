@@ -1,6 +1,7 @@
 import csv
 import io
 import json
+import os
 from datetime import datetime
 from typing import List, Optional
 from uuid import UUID
@@ -185,11 +186,18 @@ async def get_detected_events(
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
 
-    tracking_plan_json_path = session.state.get("tracking_plan_json_path", "")
+    tracking_plan_json_path = (
+        session.state.get("tracking_plan_json_path", "")
+        .strip()
+        .replace("\n", "")
+        .replace("\\", "/")
+    )
     if not tracking_plan_json_path:
         raise HTTPException(status_code=404, detail="Tracking plan not found")
 
     tracking_plan_data = []
+    if not os.path.exists(tracking_plan_json_path):
+        raise HTTPException(status_code=404, detail="Tracking plan not found")
     with open(tracking_plan_json_path, "r") as f:
         for line in f:
             try:

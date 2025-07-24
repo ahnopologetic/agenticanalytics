@@ -137,24 +137,23 @@ async def run(
 
 @router.post("/create-task")
 async def create_task(
-    request: AgentRequest,
+    body: AgentRequest,
     background_tasks: BackgroundTasks,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-    agentic_analytics_task_manager: MainAgentTaskManager = Depends(
-        get_agentic_analytics_task_manager
-    ),
 ):
-    repo_name = request.message  # TODO: structure the request message
+    from agents.runner import agentic_analytics_task_manager
+
+    repo_name = body.message  # TODO: structure the request message
     repo_path = await aclone_repo(repo_name)
 
     context = {
-        **request.context,
+        **body.context,
         "repo_path": repo_path,
         "repo_name": repo_name,
     }
     session = await agentic_analytics_task_manager.create_session(
-        context=context, session_id=request.session_id
+        context=context, session_id=body.session_id
     )
     repo = (
         db.query(Repo).filter(Repo.name == repo_name, Repo.user_id == user.id).first()
@@ -180,13 +179,13 @@ async def create_task(
             agentic_analytics_task_manager.execute,
             repo_path,
             context,
-            request.session_id or session.id,
+            body.session_id or session.id,
         )
         response = {
             "status": "success",
             "message": "Task created successfully",
             "data": {},
-            "session_id": request.session_id,
+            "session_id": body.session_id,
             "user_id": user.id,
         }
     except Exception as e:
@@ -195,7 +194,7 @@ async def create_task(
             message="Error creating task",
             status="error",
             data={},
-            session_id=request.session_id,
+            session_id=body.session_id,
             user_id=user.id,
         )
     return response

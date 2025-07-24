@@ -139,7 +139,6 @@ class MainAgentTaskManager:
 
 
 def get_agentic_analytics_task_manager(config: ServerConfig | None = None):
-    print(f"config: {config}")
     if config is None:
         config = default_config
 
