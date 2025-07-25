@@ -1,15 +1,15 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getUserSessionList } from '../../api'
 import { useUserContext } from '../../hooks/use-user-context'
 import { supabase } from '../../supabaseClient'
 
 const handleLoginWithGoogle = async () => {
-  await supabase.auth.signInWithOAuth({ provider: 'google' })
+  // await supabase.auth.signInWithOAuth({ provider: 'google' })
+  alert('Google login not supported yet')
 }
 
 const handleLoginWithGitHub = async () => {
-  await supabase.auth.signInWithOAuth({ provider: 'github', options: { redirectTo: `${window.location.origin}/github-callback` } })
+  await supabase.auth.signInWithOAuth({ provider: 'github', options: { redirectTo: `${window.location.origin}/home` } })
 }
 
 const Login = () => {
@@ -20,12 +20,7 @@ const Login = () => {
     const checkSessionsAndNavigate = async () => {
       if (!user) return
       try {
-        const res = await getUserSessionList()
-        if (res.sessions && res.sessions.length > 0) {
-          navigate('/home', { replace: true })
-        } else {
-          navigate('/github-connect', { replace: true })
-        }
+        navigate('/home', { replace: true })
       } catch {
         // fallback: go to github-connect if error
         navigate('/github-connect', { replace: true })

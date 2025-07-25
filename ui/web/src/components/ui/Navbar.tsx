@@ -3,17 +3,11 @@ import { supabase } from '../../supabaseClient'
 import { useCallback } from 'react'
 import { useUserContext } from '../../hooks/use-user-context'
 
-import useUserSessions from '../../hooks/use-user-sessions'
-
 const Navbar = () => {
   const navigate = useNavigate()
   const { user } = useUserContext()
-  // Use the custom hook to fetch user sessions
-  const userId = user?.id ?? ''
-  const { data: sessionsData, isLoading: isSessionsLoading } = useUserSessions(userId)
 
-  // Determine if the user is logged in and has sessions
-  const hasLoggedIn = !!user && !!sessionsData && Array.isArray(sessionsData.sessions) && sessionsData.sessions.length > 0
+  const hasLoggedIn = !!user
 
   const handleLogout = useCallback(async () => {
     await supabase.auth.signOut()
@@ -26,9 +20,7 @@ const Navbar = () => {
         <Link to="/" className="btn btn-ghost normal-case text-xl" tabIndex={0} aria-label="Agentic Analytics Home">Agentic Analytics</Link>
       </div>
       <div className="flex-none gap-2">
-        {isSessionsLoading ? (
-          <span className="loading loading-spinner loading-sm"></span>
-        ) : hasLoggedIn ? (
+        {hasLoggedIn ? (
           <>
             <Link to="/github-connect" className="btn btn-ghost" tabIndex={0} aria-label="Scan More Repos">Scan More Repos</Link>
             <Link to="/tracking-plan" className="btn btn-ghost" tabIndex={0} aria-label="Tracking Plan">Tracking Plan</Link>

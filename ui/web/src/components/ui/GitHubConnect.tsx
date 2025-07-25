@@ -253,7 +253,7 @@ const GitHubConnect = () => {
                       id={`repo-${repo.id}`}
                       type="checkbox"
                       checked={selectedRepos.some(r => r.id === repo.id)}
-                      onClick={e => handleRepoToggle(repo, e as React.MouseEvent<HTMLInputElement, MouseEvent>)}
+                      onChange={e => handleRepoToggle(repo, e as unknown as React.MouseEvent<HTMLInputElement, MouseEvent>)}
                       className="mr-2"
                       aria-label={`Select ${repo.name}`}
                     />
