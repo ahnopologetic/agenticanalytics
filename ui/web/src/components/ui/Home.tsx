@@ -6,6 +6,7 @@ import { useDeleteRepo, useDetectedEvents, useRepos } from '../../hooks/use-repo
 import { useUserContext } from '../../hooks/use-user-context'
 import useUserSessions from '../../hooks/use-user-sessions'
 import DetectedEventsSection from './detect-events'
+import { useNavigate } from 'react-router-dom'
 
 // --- Add: Query param helpers ---
 function getQueryParam(name: string): string | null {
@@ -67,6 +68,11 @@ const getAuthorColor = (author: string): string => {
 const Home = () => {
     const { user } = useUserContext()
     useUserSessions(user?.id ?? '')
+    const navigate = useNavigate()
+
+    if (!user) {
+        navigate('/login', { replace: true })
+    }
 
     // --- Use query param for selectedRepoId ---
     const [selectedRepoId, setSelectedRepoIdState] = useState<string | null>(() => {
